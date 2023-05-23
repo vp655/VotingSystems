@@ -254,13 +254,60 @@ class BordaCount(VotingSystem):
     # then determine winner just first the first in societal pref order
 
 
-def generate_IC_pref(num_voters, num_cands):
-    poss_ranks = math.factorial(num_cands)
-    arr = np.zeros(poss_ranks)
-    for i in range(0, num_voters):
-        ind = rand.randrange(0, poss_ranks)
-        arr[ind] = arr[ind] + 1
-    return arr
+
+
+
+
+
+class PairwiseComparison(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+
+    def set_votes(self, pref_schedule):
+        for cand in self.cand_objects:
+            cand.num_votes = 0
+        # gives all the possible comparisons between the two candidates
+        self.comparisons = list(combinations(self.cand_names, 2))
+        # for simple case gives [A,B] [B,C] [A,C]
+        for comp in self.comparisons:
+            cand_win_head_to_head = self.compare(comp, pref_schedule)
+            if (cand_win_head_to_head == None):
+                for name in comp:
+                    cand = self.find_which_candidate_w_name(name)
+                    cand.num_votes += 0.5
+            else:
+                cand_win_head_to_head.num_votes += 1
+
+    def create_societal_rank(self,pref_schedule):
+            self.set_votes(pref_schedule)
+            sorted_list = sorted(self.cand_objects, key=lambda v: v.num_votes, reverse=True)
+            map_of_cands = {}
+            # emulates do while
+            count = 0
+            previous = sorted_list[0].num_votes
+            map_of_cands[count] = []
+            # end of first iteration
+            for cand in sorted_list:
+                if (cand.num_votes == previous):
+                    map_of_cands[count].append(cand)
+                else:
+                    count += 1
+                    map_of_cands[count] = []
+                    map_of_cands[count].append(cand)
+
+            return map_of_cands
+
+    def determine_winner(self, pref_schedule):
+        societal_order = self.create_societal_rank(pref_schedule)
+        num_top = len(societal_order[0])
+        if (num_top == 1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
 
 
 # here make methods to generate an IAC one and an IANC one among other cultures
@@ -268,6 +315,14 @@ def generate_IC_pref(num_voters, num_cands):
 
 # then add more classes which inherit from voting systems and implement their own determine winner implementation
 
+
+def generate_IC_pref(num_voters, num_cands):
+    poss_ranks = math.factorial(num_cands)
+    arr = np.zeros(poss_ranks)
+    for i in range(0, num_voters):
+        ind = rand.randrange(0, poss_ranks)
+        arr[ind] = arr[ind] + 1
+    return arr
 
 def main():
     number_of_voters = 100
@@ -289,6 +344,12 @@ def main():
     election2 = BordaCount(100, 3, list_of_cand_objects)
     election2.find_all_winners(1000)
     print(election2.cwc_vio)
+
+
+    pc = PairwiseComparison(100,3,list_of_cand_objects)
+    pc.find_all_winners(1000)
+    print(pc.cwc_vio)
+
 
 
 if __name__ == '__main__':
