@@ -178,12 +178,12 @@ class Plurality(VotingSystem):
 
     def determine_winner(self, pref_schedule):
 
-        soceital_order = self.create_societal_rank(pref_schedule)
-        num_top = len(soceital_order[0])
+        societal_order = self.create_societal_rank(pref_schedule)
+        num_top = len(societal_order[0])
         if(num_top==1):
-            return soceital_order[0][0]
+            return societal_order[0][0]
         elif num_top > 1:
-            cand_win = rand.choice(soceital_order[0])
+            cand_win = rand.choice(societal_order[0])
             return cand_win
         else:
             return None
@@ -245,32 +245,15 @@ class BordaCount(VotingSystem):
     # this function takes in a preference schedule (list of numbers of length factorial(num_cands) and computes the winner
     def determine_winner(self, pref_schedule):
 
-
-        for cand in self.cand_objects:
-            cand.points = 0
-
-        count = 0
-        for val in pref_schedule:
-            ordering = self.possible_orders[count]
-            for i in range(0, self.num_cands):
-                if (i == 0):
-                    cand = self.find_which_candidate_w_name(ordering[0])
-                    cand.num_votes += val
-                # for consistency
-                cand = self.find_which_candidate_w_name(ordering[i])
-                cand.points += val * (self.num_cands - i)
-            count += 1
-
-        vote_array = []
-        for cand in self.cand_objects:
-            vote_array.append(cand.points)
-        # computes the index of the winner --> corresponding to index of the object
-        index = self.most_votes(vote_array)
-        # if there is an error, or if there is a tie
-        if (index == -1):
+        societal_order = self.create_societal_rank(pref_schedule)
+        num_top = len(societal_order[0])
+        if (num_top == 1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
             return None
-        # returns the object
-        return self.cand_objects[index]
 
     def create_societal_rank(self,pref_schedule):
         self.set_votes(pref_schedule)
@@ -332,7 +315,7 @@ def main():
     a = election.determine_winner([10,10,10,10,10,10])
     print(a.name)
 
-    election2 = BordaCount(10, 3, list_of_cand_objects) #maybe I should have a check where every pref_schedule numbers should sum to num_voters
+    election2 = BordaCount(100, 3, list_of_cand_objects) #maybe I should have a check where every pref_schedule numbers should sum to num_voters
     print((election2.determine_winner([2, 2, 2, 2, 2, 2])).points)
     print((election2.determine_winner([2, 2, 2, 2, 2, 2])).name)
 
