@@ -16,6 +16,7 @@ class Candidate:
         self.condorcet_points = 0
         self.condorcet_wins = 0
         self.points = 0
+        self.rank = 0
 
 
 # abstract base class of the voting systems
@@ -33,6 +34,8 @@ class VotingSystem(ABC):
 
         self.comparisons = []  # all the possible comparisons between candidates
         self.cwc_vio = 0  # how many Condorcet winner criterion violations there are
+
+        self.IIAv = 0
 
     # this function sets all the candidate names from the candidate objects
     def set_candidate_names(self):
@@ -118,6 +121,10 @@ class VotingSystem(ABC):
             # print(pref_schedule)
             cand_win = self.determine_winner(pref_schedule)
             cand_condorcet = self.find_Condorcet_candidate(pref_schedule)
+
+            self.IIA(pref_schedule)
+
+
             # if there is a Condorcet candidate
             if cand_condorcet is not None:
                 # print(cand_condorcet.name)
@@ -133,11 +140,73 @@ class VotingSystem(ABC):
 
     def IIA(self, pref_schedule):
         for comp in self.comparisons:
-            self.compare(comp,pref_schedule)
+            winner = 0
+            map_cand = self.create_societal_rank(pref_schedule)
             one = self.find_which_candidate_w_name(comp[0])
             two = self.find_which_candidate_w_name(comp[1])
-            print(one.name + " " + str(one.condorcet_points))
-            print(two.name + " " + str(two.condorcet_points))
+            if(one.rank < two.rank):
+                winner = 1
+            elif(one.rank > two.rank):
+                winner = 2
+
+            # now we need to set their condorcet points (could be a separate function)
+            self.compare(comp,pref_schedule)  # this modifies the corresponding objects directly
+            for j in range(0,100):
+                new_pref = self.generate_pref_srr(one, two)
+                new_map = self.create_societal_rank(new_pref)
+                if winner == 1 and (one.rank>=two.rank):
+                    self.IIAv += 1
+                    return
+                elif winner == 2 and (one.rank<=two.rank):
+                    self.IIAv += 1
+                    return
+                elif winner == 0 and (one.rank != two.rank):
+                    self.IIAv += 1
+                    return
+
+    def generate_pref_srr(self,one, two):
+        poss_ranks = math.factorial(self.num_cands)
+        arr = np.zeros(poss_ranks)
+
+
+        modified_cand = self.cand_objects[:]
+        modified_cand.remove(one)
+        modified_cand.remove(two)
+
+
+
+        for i in range(0,int(one.condorcet_points)):
+            ordering = [one.name,two.name]
+            poss_insertions = 2
+            for cand in modified_cand:
+                choice = rand.randint(0,poss_insertions)
+                ordering.insert(choice,cand.name)
+            index = self.find_pref_in_all(tuple(ordering))
+
+            arr[index] += 1
+            poss_insertions += 1
+
+        for i in range(0,int(two.condorcet_points)):
+            ordering = [two.name,one.name]
+            poss_insertions = 2
+            for cand in modified_cand:
+                choice = rand.randint(0,poss_insertions)
+                ordering.insert(choice,cand.name)
+            index = self.find_pref_in_all(tuple(ordering))
+
+            arr[index] += 1
+            poss_insertions += 1
+
+
+        return(arr)
+
+    def find_pref_in_all(self,pref_order):
+        for i in range(0,len(self.possible_orders)):
+            if pref_order == self.possible_orders[i]:
+                return i
+
+
+
 
 
 
@@ -193,6 +262,7 @@ class Plurality(VotingSystem):
                 count += 1
                 map_of_cands[count] = []
                 map_of_cands[count].append(cand)
+            cand.rank = count
 
 
 
@@ -258,6 +328,7 @@ class BordaCount(VotingSystem):
                 count += 1
                 map_of_cands[count] = []
                 map_of_cands[count].append(cand)
+            cand.rank = count
 
         return map_of_cands
 
@@ -308,6 +379,7 @@ class PairwiseComparison(VotingSystem):
                     count += 1
                     map_of_cands[count] = []
                     map_of_cands[count].append(cand)
+                cand.rank = count
 
             return map_of_cands
 
@@ -335,10 +407,11 @@ def generate_IC_pref(num_voters, num_cands):
     for i in range(0, num_voters):
         ind = rand.randrange(0, poss_ranks)
         arr[ind] = arr[ind] + 1
+    #print(arr)
     return arr
 
 def main():
-    number_of_voters = 1000
+    number_of_voters = 4
     number_of_cands = 3
     list_of_cand_objects = []
     c1 = Candidate('A')
@@ -349,29 +422,30 @@ def main():
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
 
+
     election = Plurality(number_of_voters, number_of_cands, list_of_cand_objects)
 
 
 
     election.find_all_winners(10000)
     print(election.cwc_vio)
+    print(election.IIAv)
 
-    election2 = BordaCount(100, 3, list_of_cand_objects)
-    election2.find_all_winners(1000)
+
+
+    election2 = BordaCount(4, 3, list_of_cand_objects)
+    election2.find_all_winners(10000)
     print(election2.cwc_vio)
+    print(election2.IIAv)
 
-
+    """
     pc = PairwiseComparison(100,3,list_of_cand_objects)
 
-    candy = pc.determine_winner([3,2,1,1,5,0])
-    for cand in list_of_cand_objects:
-        print(cand.num_votes)
+    #pc.find_all_winners(1000)
+    #print(pc.cwc_vio)
 
-
-    pc.find_all_winners(1000)
-    print(pc.cwc_vio)
-
-    pc.IIA([1,2,3,4,5,6])
+    #pc.IIA([3,2,1,1,5,0])
+    """
 
 
 
