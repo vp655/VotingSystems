@@ -54,12 +54,14 @@ class VotingSystem(ABC):
         self.comparisons = list(combinations(self.cand_names, 2))
         # for simple case gives [A,B] [B,C] [A,C]
         for comp in self.comparisons:
-            cand_win_head_to_head = self.compare(comp, pref_schedule)
-            if (cand_win_head_to_head == None):
+            cand_win_name = self.compare(comp, pref_schedule)
+            if cand_win_name is None:
                 continue
-            cand_win_head_to_head.condorcet_wins += 1
+            else:
+                cand_winner = self.find_which_candidate_w_name(cand_win_name)
+                cand_winner.condorcet_wins += 1
         for cand in self.cand_objects:
-            if (cand.condorcet_wins == self.num_cands - 1):
+            if cand.condorcet_wins == self.num_cands - 1:
                 return cand
         return None
 
@@ -77,9 +79,9 @@ class VotingSystem(ABC):
             elif (index_one > index_two):
                 cand2.condorcet_points += pref_schedule[i]
         if (cand1.condorcet_points > cand2.condorcet_points):
-            return cand1
+            return cand1.name
         elif (cand2.condorcet_points > cand1.condorcet_points):
-            return cand2
+            return cand2.name
         # if they have the same amount of points, then neither is a condorcet candidate
         elif (cand1.condorcet_points == cand2.condorcet_points):
             return None
@@ -117,16 +119,26 @@ class VotingSystem(ABC):
             cand_win = self.determine_winner(pref_schedule)
             cand_condorcet = self.find_Condorcet_candidate(pref_schedule)
             # if there is a Condorcet candidate
-            if (cand_condorcet != None):
+            if cand_condorcet is not None:
                 # print(cand_condorcet.name)
                 # and no candidate wins
-                if (cand_win == None):
+                if cand_win is None:
                     self.cwc_vio += 1
                     # print("Violate")
-                elif (cand_win.name != cand_condorcet.name):
+                elif cand_win.name != cand_condorcet.name:
                     self.cwc_vio += 1
                     # print("Violate")
                 # print(cand_win.name)
+
+
+    def IIA(self, pref_schedule):
+        for comp in self.comparisons:
+            self.compare(comp,pref_schedule)
+            one = self.find_which_candidate_w_name(comp[0])
+            two = self.find_which_candidate_w_name(comp[1])
+            print(one.name + " " + str(one.condorcet_points))
+            print(two.name + " " + str(two.condorcet_points))
+
 
 
 class Plurality(VotingSystem):
@@ -271,12 +283,13 @@ class PairwiseComparison(VotingSystem):
         self.comparisons = list(combinations(self.cand_names, 2))
         # for simple case gives [A,B] [B,C] [A,C]
         for comp in self.comparisons:
-            cand_win_head_to_head = self.compare(comp, pref_schedule)
-            if (cand_win_head_to_head == None):
+            cand_win_name = self.compare(comp, pref_schedule)
+            if cand_win_name is None:
                 for name in comp:
                     cand = self.find_which_candidate_w_name(name)
                     cand.num_votes += 0.5
             else:
+                cand_win_head_to_head = self.find_which_candidate_w_name(cand_win_name)
                 cand_win_head_to_head.num_votes += 1
 
     def create_societal_rank(self,pref_schedule):
@@ -325,7 +338,7 @@ def generate_IC_pref(num_voters, num_cands):
     return arr
 
 def main():
-    number_of_voters = 100
+    number_of_voters = 1000
     number_of_cands = 3
     list_of_cand_objects = []
     c1 = Candidate('A')
@@ -338,6 +351,8 @@ def main():
 
     election = Plurality(number_of_voters, number_of_cands, list_of_cand_objects)
 
+
+
     election.find_all_winners(10000)
     print(election.cwc_vio)
 
@@ -347,8 +362,16 @@ def main():
 
 
     pc = PairwiseComparison(100,3,list_of_cand_objects)
+
+    candy = pc.determine_winner([3,2,1,1,5,0])
+    for cand in list_of_cand_objects:
+        print(cand.num_votes)
+
+
     pc.find_all_winners(1000)
     print(pc.cwc_vio)
+
+    pc.IIA([1,2,3,4,5,6])
 
 
 
