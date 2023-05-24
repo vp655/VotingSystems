@@ -154,6 +154,7 @@ class VotingSystem(ABC):
             for j in range(0,100):
                 new_pref = self.generate_pref_srr(one, two)
                 new_map = self.create_societal_rank(new_pref)
+                # note that this calls member function that is defined in the derived class (is that good practice)
                 if winner == 1 and (one.rank>=two.rank):
                     self.IIAv += 1
                     return
@@ -410,7 +411,25 @@ def generate_IC_pref(num_voters, num_cands):
     #print(arr)
     return arr
 
+
+def generate_IAC_pref(num_voters, num_cands):
+    poss_ranks = math.factorial(num_cands)
+    arr = np.zeros(poss_ranks)  # this has num_cands! elements
+    end_range = num_voters + poss_ranks - 1
+    vals = rand.sample(range(0,end_range),poss_ranks-1)  # 5 random vals from 0 to 15 for example
+    sorted_vals = sorted(vals)  # sort the values
+    print(sorted_vals)
+    arr[0] = sorted_vals[0]  # the first bar
+    for i in range(1,len(sorted_vals)):
+        arr[i] = sorted_vals[i] - sorted_vals[i-1] - 1
+    arr[poss_ranks-1] = end_range - sorted_vals[poss_ranks-2] - 1
+
+    return arr
+
+
+
 def main():
+
     number_of_voters = 4
     number_of_cands = 3
     list_of_cand_objects = []
@@ -424,9 +443,6 @@ def main():
 
 
     election = Plurality(number_of_voters, number_of_cands, list_of_cand_objects)
-
-
-
     election.find_all_winners(10000)
     print(election.cwc_vio)
     print(election.IIAv)
@@ -438,14 +454,16 @@ def main():
     print(election2.cwc_vio)
     print(election2.IIAv)
 
-    """
-    pc = PairwiseComparison(100,3,list_of_cand_objects)
 
-    #pc.find_all_winners(1000)
-    #print(pc.cwc_vio)
+    pc = PairwiseComparison(10,3,list_of_cand_objects)
+    pc.find_all_winners(10000)
+    print(pc.cwc_vio)
+    print(pc.IIAv)
 
-    #pc.IIA([3,2,1,1,5,0])
-    """
+
+    wow = generate_IAC_pref(400, 4)
+    print(wow)
+    print(sum(wow))
 
 
 
