@@ -205,10 +205,11 @@ class VotingSystem(ABC):
             for cand in modified_cand:
                 choice = rand.randint(0,poss_insertions)
                 ordering.insert(choice,cand.name)
+                poss_insertions += 1  # we need to increment this here, think in the case of 4
             index = self.find_pref_in_all(tuple(ordering))
 
             arr[index] += 1
-            poss_insertions += 1
+
 
 
         return(arr)
