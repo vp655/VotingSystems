@@ -108,9 +108,9 @@ class VotingSystem(ABC):
     def create_societal_rank(self,pref_schedule):
         pass
 
-    @abstractmethod
-    def set_votes(self, pref_schedule):
-        pass
+    #@abstractmethod
+    #def set_votes(self, pref_schedule):
+    #    pass
 
     def find_all_winners(self, num_trials):
         for i in range(0, num_trials):
@@ -135,6 +135,35 @@ class VotingSystem(ABC):
                     self.cwc_vio += 1
                     # print("Violate")
                 # print(cand_win.name)
+
+    def IIA_aliter(self, pref_schedule):
+        for comp in self.comparisons:
+            winner = 0
+            map_cand = self.create_societal_rank(pref_schedule)
+            one = self.find_which_candidate_w_name(comp[0])
+            two = self.find_which_candidate_w_name(comp[1])
+            if (one.rank < two.rank):
+                winner = 1
+            elif (one.rank > two.rank):
+                winner = 2
+            copy_of_prefs = self.eliminate_cands(pref_schedule, one, two)
+
+
+    def eliminate_cands(self,pref_schedule, one, two):
+        modified_cand = self.cand_objects[:]
+        modified_cand.remove(one)
+        modified_cand.remove(two)
+        name_to_elim = modified_cand[0].name
+        copy_of_prefs = self.possible_orders[:]
+        for pref_order in copy_of_prefs:
+            pref_order.remove(name_to_elim)
+        return copy_of_prefs
+
+
+
+
+
+
 
 
     def IIA(self, pref_schedule):
@@ -229,6 +258,20 @@ class Plurality(VotingSystem):
     def __init__(self, num_voters, num_cands, cand_objects):
         super().__init__(num_voters, num_cands, cand_objects)
 
+        """
+    #overloaded set_votes function
+    def set_votes(self,pref_schedule,altered_poss_orders):
+        for cand in self.cand_objects:
+            cand.num_votes = 0
+        count = 0
+        for val in pref_schedule:
+            name_of_cand_getting_votes = altered_poss_orders[count][0]
+            # using find candidate with name function here
+            cand_get_votes = self.find_which_candidate_w_name(name_of_cand_getting_votes)
+            cand_get_votes.num_votes += val
+            count += 1
+            """
+
     # this function takes in a preference schedule (list of numbers of length factorial(num_cands) and computes the winner
 
     def set_votes(self,pref_schedule):
@@ -239,11 +282,10 @@ class Plurality(VotingSystem):
         # for each value in the preference schedule
         for val in pref_schedule:
             # the first one is the one getting votes
-            cand_getting_votes = self.possible_orders[count][0]
-            for cand in self.cand_objects:
-                if (cand.name == cand_getting_votes):
-                    cand.num_votes += val
-
+            name_of_cand_getting_votes = self.possible_orders[count][0]
+            # using find candidate with name function here
+            cand_get_votes = self.find_which_candidate_w_name(name_of_cand_getting_votes)
+            cand_get_votes.num_votes += val
             count += 1
 
     def determine_winner(self, pref_schedule):
@@ -414,6 +456,9 @@ class PairwiseComparison(VotingSystem):
 # then add more classes which inherit from voting systems and implement their own determine winner implementation
 
 
+
+
+
 def generate_IC_pref(num_voters, num_cands):
     poss_ranks = math.factorial(num_cands)
     arr = np.zeros(poss_ranks, dtype = int)
@@ -439,7 +484,22 @@ def generate_IAC_pref(num_voters, num_cands):
     return arr
 
 def custom_distribution(num_voters, num_cands, weights):
-    pass
+    poss_ranks = math.factorial(num_cands)
+    arr = np.zeros(poss_ranks, dtype=int)
+    result = 0
+    new_arr = []
+    for val in weights:
+        result += val
+        new_arr.append(result)
+
+    for i in range(0,num_voters):
+        chosen_val = rand.random()
+        for j in range(0,len(new_arr)):
+            if chosen_val <= new_arr[j]:
+                arr[j] += 1
+                break
+
+    return arr
 
 
 
@@ -461,7 +521,7 @@ def main():
 
     election = Plurality(number_of_voters, number_of_cands, list_of_cand_objects)
 
-    election.create_societal_rank([1,2,0,0,0,0])
+    #election.create_societal_rank([1,2,0,0,0,0])
 
 
     election.find_all_winners(10000)
@@ -479,7 +539,7 @@ def main():
     #print(election2.IIAv)
 
 
-    pc = PairwiseComparison(30,3,list_of_cand_objects)
+    #pc = PairwiseComparison(30,3,list_of_cand_objects)
     #pc.find_all_winners(10000)
     #print(pc.cwc_vio)
     #print(pc.IIAv)
