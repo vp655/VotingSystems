@@ -153,8 +153,8 @@ class VotingSystem(ABC):
             one_c = one.condorcet_points
             two_c = two.condorcet_points
 
-
             for j in range(0,100):
+
                 new_pref = self.generate_pref_srr(one, two, one_c, two_c)
                 new_map = self.create_societal_rank(new_pref)  # this runs through every comparison
                 # note that this calls member function that is defined in the derived class (is that good practice)
@@ -173,6 +173,9 @@ class VotingSystem(ABC):
                     #print(new_pref)
                     self.IIAv += 1
                     return
+        #print(pref_schedule)
+
+
 
     def generate_pref_srr(self,one, two, one_c, two_c):
         poss_ranks = math.factorial(self.num_cands)
@@ -272,6 +275,7 @@ class Plurality(VotingSystem):
                 count += 1
                 map_of_cands[count] = []
                 map_of_cands[count].append(cand)
+            previous = cand.num_votes
             cand.rank = count
 
 
@@ -433,11 +437,14 @@ def generate_IAC_pref(num_voters, num_cands):
 
     return arr
 
+def custom_distribution(num_voters, num_cands, weights):
+    pass
+
 
 
 def main():
 
-    number_of_voters = 3
+    number_of_voters = 100
     number_of_cands = 3
     list_of_cand_objects = []
     c1 = Candidate('A')
@@ -451,9 +458,16 @@ def main():
     #list_of_cand_objects.append(c4)
 
 
-    #election = Plurality(number_of_voters, number_of_cands, list_of_cand_objects)
-    #election.find_all_winners(10000)
+    election = Plurality(number_of_voters, number_of_cands, list_of_cand_objects)
+
+    election.create_societal_rank([1,2,0,0,0,0])
+
+
+    election.find_all_winners(10000)
     #print(election.cwc_vio)
+    print(election.IIAv)
+
+    #election.IIA([7,1,0,1,0,1])
     #print(election.IIAv)
 
 
@@ -465,9 +479,9 @@ def main():
 
 
     pc = PairwiseComparison(30,3,list_of_cand_objects)
-    pc.find_all_winners(10000)
-    print(pc.cwc_vio)
-    print(pc.IIAv)
+    #pc.find_all_winners(10000)
+    #print(pc.cwc_vio)
+    #print(pc.IIAv)
 
     # IIA method may not be scaling up - test it
 
