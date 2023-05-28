@@ -56,7 +56,7 @@ class VotingSystem(ABC):
         for cand in self.cand_objects:
             cand.condorcet_wins = 0
         for comp in self.comparisons:
-            cand_win_name = self.compare(comp, pref_schedule)
+            cand_win_name = self.compare(comp, pref_schedule, self.possible_orders)
             if cand_win_name is None:
                 continue
             else:
@@ -67,13 +67,13 @@ class VotingSystem(ABC):
                 return cand
         return None
 
-    def compare(self, comp, pref_schedule):
+    def compare(self, comp, pref_schedule, ordering):
         cand1 = self.find_which_candidate_w_name(comp[0])
         cand2 = self.find_which_candidate_w_name(comp[1])
         for cand in self.cand_objects:
             cand.condorcet_points = 0
         for i in range(0, len(pref_schedule)):
-            order = self.possible_orders[i]
+            order = ordering[i]
             index_one = self.find_index_of(comp[0], order)
             index_two = self.find_index_of(comp[1], order)
             if (index_one < index_two):
@@ -122,7 +122,7 @@ class VotingSystem(ABC):
             cand_condorcet = self.find_Condorcet_candidate(pref_schedule)
 
 
-            self.IIA(pref_schedule)
+            self.IIA_paper(pref_schedule)
             #self.IIA_aliter(pref_schedule)
 
 
@@ -137,6 +137,210 @@ class VotingSystem(ABC):
                     self.cwc_vio += 1
                     # print("Violate")
                 # print(cand_win.name)
+
+    def IIA_paper(self, pref_schedule):
+        violated = False
+        for comp in self.comparisons:
+            winner = 0
+            map_cand = self.create_societal_rank(pref_schedule, self.cand_objects, self.possible_orders)
+            one = self.find_which_candidate_w_name(comp[0])
+            two = self.find_which_candidate_w_name(comp[1])
+            if (one.rank < two.rank):
+                winner = 1
+            elif (one.rank > two.rank):
+                winner = 2
+
+            modified_cand = self.cand_objects[:]
+            modified_cand.remove(one)
+            modified_cand.remove(two)
+            cand_name = modified_cand[0].name
+
+
+            #moving C up and down 1 and 2 times
+            poss_pref1 = self.move_up(self.possible_orders, cand_name, 1, one, two)
+            vio1 = self.check_vio(pref_schedule, winner, one, two, poss_pref1)
+            if(vio1 == True):
+                violated = True
+                break
+
+            poss_pref2 = self.move_up(self.possible_orders, cand_name, 2, one, two)
+            vio2 = self.check_vio(pref_schedule, winner, one, two, poss_pref2)
+            if (vio2 == True):
+                violated = True
+                break
+
+            poss_pref3 = self.move_down(self.possible_orders, cand_name, 1, one, two)
+            vio3 = self.check_vio(pref_schedule, winner, one, two, poss_pref3)
+            if (vio3 == True):
+                violated = True
+                break
+
+            poss_pref4 = self.move_down(self.possible_orders, cand_name, 2, one, two)
+            vio4 = self.check_vio(pref_schedule, winner, one, two, poss_pref4)
+            if (vio4 == True):
+                violated = True
+                break
+
+            #moving the pair being compared
+            poss_pref5 = self.move_up(self.possible_orders, one.name, 1, one, two)
+            vio5 = self.check_vio(pref_schedule, winner, one, two, poss_pref5)
+            if (vio5 == True):
+                violated = True
+                break
+
+            poss_pref6 = self.move_down(self.possible_orders, one.name, 1, one, two)
+            vio6 = self.check_vio(pref_schedule, winner, one, two, poss_pref6)
+            if (vio6 == True):
+                violated = True
+                break
+
+            poss_pref7 = self.move_up(self.possible_orders, two.name, 1, one, two)
+            vio7 = self.check_vio(pref_schedule, winner, one, two, poss_pref7)
+            if (vio7 == True):
+                violated = True
+                break
+
+            poss_pref8 = self.move_down(self.possible_orders, two.name, 1, one, two)
+            vio8 = self.check_vio(pref_schedule, winner, one, two, poss_pref8)
+            if (vio8 == True):
+                violated = True
+                break
+
+            poss_pref9 = self.sim_move_1(winner, one, two)
+            vio9 = self.check_vio(pref_schedule, winner, one, two, poss_pref9)
+            if (vio9 == True):
+                violated = True
+                break
+
+            poss_pref10 = self.sim_move_2(winner, one, two)
+            vio10 = self.check_vio(pref_schedule, winner, one, two, poss_pref10)
+            if (vio10 == True):
+                violated = True
+                break
+
+        if(violated==False):
+           print(pref_schedule)
+
+
+
+
+
+    def move_up(self, ordering, cand_name, amt, one, two):
+
+
+        new_pref = []
+        copy_of_orders = ordering[:]
+        for pref_order in copy_of_orders:
+            list_order = list(pref_order)
+            idx = list_order.index(cand_name)
+            #make more general past the case of three
+            if (cand_name == one.name):
+                idx_rival = list_order.index(two.name)
+                if((idx_rival+1) == idx):
+                    new_pref.append(tuple(list_order))
+                    continue
+            elif(cand_name == two.name):
+                idx_rival = list_order.index(one.name)
+                if ((idx_rival + 1) == idx):
+                    new_pref.append(tuple(list_order))
+                    continue
+
+
+
+            if (idx >= amt):
+                list_order.remove(cand_name)
+                list_order.insert(idx - amt, cand_name)
+            else:
+                list_order.remove(cand_name)
+                list_order.insert(0, cand_name)
+            new_pref.append(tuple(list_order))
+        return new_pref
+
+
+    def move_down(self, ordering,  cand_name, amt, one, two):
+        new_pref = []
+        end = len(ordering) - 1
+        copy_of_orders = ordering[:]
+        for pref_order in copy_of_orders:
+            list_order = list(pref_order)
+            idx = list_order.index(cand_name)
+            if (cand_name == one.name):
+                idx_rival = list_order.index(two.name)
+                if((idx_rival-1) == idx):
+                    new_pref.append(tuple(list_order))
+                    continue
+            elif(cand_name == two.name):
+                idx_rival = list_order.index(one.name)
+                if ((idx_rival - 1) == idx):
+                    new_pref.append(tuple(list_order))
+                    continue
+            if (idx <= (end - amt)):
+                list_order.remove(cand_name)
+                list_order.insert(idx + amt, cand_name)
+            else:
+                list_order.remove(cand_name)
+                list_order.insert(end, cand_name)
+            new_pref.append(tuple(list_order))
+        return new_pref
+
+
+    def sim_move_1(self, winner,one, two):
+        mpref_alt = None
+        lpref_alt = None
+        if(winner == 1):
+            mpref_alt = one
+            lpref_alt = two
+        if(winner == 2):
+            mpref_alt = two
+            lpref_alt = one
+        if(winner ==0):
+            return self.possible_orders
+
+        initial = self.move_down(self.possible_orders, mpref_alt.name, 1, one, two)
+        final = self.move_up(initial, lpref_alt.name, 1, one, two)
+        return final
+
+    def sim_move_2(self, winner,one, two):
+        mpref_alt = None
+        lpref_alt = None
+        if(winner == 1):
+            mpref_alt = one
+            lpref_alt = two
+        if(winner == 2):
+            mpref_alt = two
+            lpref_alt = one
+        if(winner ==0):
+            return self.possible_orders
+
+        initial = self.move_up(self.possible_orders, lpref_alt.name, 1, one, two)
+        final = self.move_down(initial, mpref_alt.name, 1, one, two)
+        return final
+
+
+
+
+
+
+
+
+
+    def check_vio(self, pref_sc, winner, one, two, poss_pref):
+        new_map = self.create_societal_rank(pref_sc, self.cand_objects,poss_pref)
+        if winner == 1 and (one.rank >= two.rank):
+            self.IIAv += 1
+            return True
+        elif winner == 2 and (one.rank <= two.rank):
+            self.IIAv += 1
+            return True
+        elif winner == 0 and (one.rank != two.rank):
+            self.IIAv += 1
+            return True
+        return False
+
+
+
+
+
 
     def IIA_aliter(self, pref_schedule):
         for comp in self.comparisons:
@@ -193,13 +397,13 @@ class VotingSystem(ABC):
             elif(one.rank > two.rank):
                 winner = 2
 
-            self.compare(comp,pref_schedule)
+            self.compare(comp,pref_schedule, self.possible_orders)
             # we can use these local values
             one_c = one.condorcet_points
             two_c = two.condorcet_points
 
             #increasing this would increase percentages
-            for j in range(0,300):
+            for j in range(0,100):
 
                 new_pref = self.generate_pref_srr(one, two, one_c, two_c)
                 new_map = self.create_societal_rank(new_pref, self.cand_objects, self.possible_orders)  # this runs through every comparison
@@ -219,7 +423,7 @@ class VotingSystem(ABC):
                     #print(new_pref)
                     self.IIAv += 1
                     return
-        #print(pref_schedule)
+        print(pref_schedule)
 
 
 
@@ -388,6 +592,7 @@ class BordaCount(VotingSystem):
                 count += 1
                 map_of_cands[count] = []
                 map_of_cands[count].append(cand)
+            previous = cand.points
             cand.rank = count
 
         return map_of_cands
@@ -412,7 +617,7 @@ class PairwiseComparison(VotingSystem):
             cand.num_votes = 0
 
         for comp in self.comparisons:
-            cand_win_name = self.compare(comp, pref_schedule)
+            cand_win_name = self.compare(comp, pref_schedule, poss_order)
             if cand_win_name is None:
                 for name in comp:
                     cand = self.find_which_candidate_w_name(name)
@@ -437,6 +642,7 @@ class PairwiseComparison(VotingSystem):
                     count += 1
                     map_of_cands[count] = []
                     map_of_cands[count].append(cand)
+                previous = cand.num_votes
                 cand.rank = count
 
             return map_of_cands
@@ -508,7 +714,7 @@ def custom_distribution(num_voters, num_cands, weights):
 
 def main():
 
-    number_of_voters = 30
+    number_of_voters = 3
     number_of_cands = 3
     list_of_cand_objects = []
     c1 = Candidate('A')
@@ -521,35 +727,29 @@ def main():
     list_of_cand_objects.append(c3)
     #list_of_cand_objects.append(c4)
 
-
-    election = Plurality(number_of_voters, number_of_cands, list_of_cand_objects)
-    #election.IIA_aliter([1,2,1,0,0,0])
-    #election.create_societal_rank([1,2,0,0,0,0])
-
     print("Election 1")
-
-    election.find_all_winners(10000)
-    print(election.cwc_vio)
+    election = Plurality(number_of_voters, number_of_cands, list_of_cand_objects)
+    #election.find_all_winners(10000)
+    #print(election.cwc_vio)
     print(election.IIAv)
 
-    #election.IIA([7,1,0,1,0,1])
-    #print(election.IIAv)
-"""
+
     print("Election 2")
 
-    election2 = BordaCount(30, 3, list_of_cand_objects)
-    election2.find_all_winners(10000)
-    print(election2.cwc_vio)
+    election2 = BordaCount(4, 3, list_of_cand_objects)
+    #election2.find_all_winners(10000)
+    #print(election2.cwc_vio)
     print(election2.IIAv)
     
     print("Election 3")
 
-    pc = PairwiseComparison(10,3,list_of_cand_objects)
-    pc.find_all_winners(10000)
-    print(pc.cwc_vio)
+    pc = PairwiseComparison(4,3,list_of_cand_objects)
+    #pc.IIA([1, 2, 0 ,0 ,1 ,0])
     print(pc.IIAv)
-"""
-    # IIA method may not be scaling up - test it
+    pc.find_all_winners(100)
+    #print(pc.cwc_vio)
+    print(pc.IIAv)
+
 
 
     #pc.IIA([1,0,0,0,2,0])
