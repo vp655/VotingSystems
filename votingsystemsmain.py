@@ -5,6 +5,7 @@ from itertools import *
 import random as rand
 import math
 import time
+from sympy.utilities.iterables import multiset_permutations
 
 
 class Candidate:
@@ -712,6 +713,31 @@ def custom_distribution(num_voters, num_cands, weights):
 
 
 
+def generate_unique_permutation(n,k):
+    voters = np.zeros(n)
+    candidates = np.ones(k-1)
+    combined_arr = np.concatenate((voters,candidates))
+    unique_perms = list(multiset_permutations(combined_arr))
+    return unique_perms
+
+def obtain_combos(unique_perms):
+    list_of_combos = []
+    for val in unique_perms:
+        count = 0
+        val_to_add = []
+        for i in range(0, len(val)):
+            if (val[i] == 0):
+                count = count + 1
+            if (val[i] == 1):
+                val_to_add.append(count)
+                count = 0
+            if (i + 1 == len(val)):
+                val_to_add.append(count)
+        list_of_combos.append(val_to_add)
+    return list_of_combos
+
+
+
 def main():
 
     number_of_voters = 3
@@ -744,11 +770,17 @@ def main():
     print("Election 3")
 
     pc = PairwiseComparison(4,3,list_of_cand_objects)
+    unique = generate_unique_permutation(4,6)
+    real_unique = obtain_combos((unique))
+    #pc.IIA([0,0,0,0,1,2])
+    for i in real_unique:
+        pc.IIA(i)
+    print(pc.IIAv)
     #pc.IIA([1, 2, 0 ,0 ,1 ,0])
-    print(pc.IIAv)
-    pc.find_all_winners(100)
+    #print(pc.IIAv)
+    #pc.find_all_winners(100)
     #print(pc.cwc_vio)
-    print(pc.IIAv)
+    #print(pc.IIAv)
 
 
 
