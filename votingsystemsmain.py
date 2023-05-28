@@ -736,7 +736,7 @@ def main():
 
     print("Election 2")
 
-    election2 = BordaCount(4, 3, list_of_cand_objects)
+    election2 = BordaCount(3, 3, list_of_cand_objects)
     #election2.find_all_winners(10000)
     #print(election2.cwc_vio)
     print(election2.IIAv)
