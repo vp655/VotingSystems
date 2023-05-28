@@ -198,7 +198,8 @@ class VotingSystem(ABC):
             one_c = one.condorcet_points
             two_c = two.condorcet_points
 
-            for j in range(0,100):
+            #increasing this would increase percentages
+            for j in range(0,300):
 
                 new_pref = self.generate_pref_srr(one, two, one_c, two_c)
                 new_map = self.create_societal_rank(new_pref, self.cand_objects, self.possible_orders)  # this runs through every comparison
@@ -507,7 +508,7 @@ def custom_distribution(num_voters, num_cands, weights):
 
 def main():
 
-    number_of_voters = 10
+    number_of_voters = 30
     number_of_cands = 3
     list_of_cand_objects = []
     c1 = Candidate('A')
@@ -533,21 +534,21 @@ def main():
 
     #election.IIA([7,1,0,1,0,1])
     #print(election.IIAv)
-
+"""
     print("Election 2")
 
     election2 = BordaCount(30, 3, list_of_cand_objects)
     election2.find_all_winners(10000)
     print(election2.cwc_vio)
     print(election2.IIAv)
-
+    
     print("Election 3")
 
     pc = PairwiseComparison(10,3,list_of_cand_objects)
     pc.find_all_winners(10000)
     print(pc.cwc_vio)
     print(pc.IIAv)
-
+"""
     # IIA method may not be scaling up - test it
 
 
