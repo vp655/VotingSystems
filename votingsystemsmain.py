@@ -112,7 +112,7 @@ class VotingSystem(ABC):
         for cand in self.cand_objects:
             if cand.name == name:
                 return cand
-        return 0
+        return None
 
     def find_index_of(self, val, ordering):
         for i in range(0, len(ordering)):
