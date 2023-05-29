@@ -1,3 +1,14 @@
+"""
+This program models various voting systems. It calculates how often the voting systems violate certain social choice
+criterion. Each Voting System is its own class, and is derived from the Voting Systems abstract base class. The checks
+for the criterion are all in the Voting System class. Each derived class has its own method to determine the winner and
+create a societal preference order. The simulations are run in the main function and the data gathered.
+"""
+
+
+
+
+
 # importing required libraries
 import numpy as np
 from abc import ABC, abstractmethod
@@ -18,6 +29,8 @@ class Candidate:
         self.condorcet_wins = 0
         self.points = 0
         self.rank = 0
+        # for instant runoff
+        self.round_elim = 0
 
 
 # abstract base class of the voting systems
@@ -28,37 +41,38 @@ class VotingSystem(ABC):
         self.cand_objects = cand_objects  # these are the Candidates
 
         self.cand_names = []
-        self.set_candidate_names()
+        self.set_candidate_names()  # function that sets candidate names
 
         self.possible_orders = []
-        self.generate_candidates_combos()
+        self.generate_candidates_combos()  # generates all preference orders
 
-        self.comparisons = list(combinations(self.cand_names, 2))  # all the possible comparisons between candidates
+        self.comparisons = list(combinations(self.cand_names, 2))
         # gives all the possible comparisons between the two candidates
         # for simple case gives [A,B] [B,C] [A,C]
-        self.cwc_vio = 0  # how many Condorcet winner criterion violations there are
 
+        self.cwc_vio = 0  # how many Condorcet winner criterion violations there are
         self.IIAv = 0
+        self.majority_vio = 0
 
     # this function sets all the candidate names from the candidate objects
     def set_candidate_names(self):
         for cand in self.cand_objects:
             self.cand_names.append(cand.name)
-        # print(self.cand_names)
 
-    # this function generates all the possible orderings, calls set_candidate_names
+    # this function generates all the possible orderings
     def generate_candidates_combos(self):
-        # the following line can be computationally heavy - permutation of all the candidates
+        # the following line can be computationally heavy - permutation of all the candidate names
         self.possible_orders = list(permutations(self.cand_names))
-        # print(self.possible_orders)
+        # for instance [(A,B,C),(A,C,B),(B,A,C),(B,C,A),(C,A,B),(C,B,A)]
 
-
+    # this function finds the Condorcet candidate
+    # returns None if it does not exist
     def find_Condorcet_candidate(self, pref_schedule):
         for cand in self.cand_objects:
             cand.condorcet_wins = 0
         for comp in self.comparisons:
             cand_win_name = self.compare(comp, pref_schedule, self.possible_orders)
-            if cand_win_name is None:
+            if cand_win_name is None:  # this indicates that a tie occurred
                 continue
             else:
                 cand_winner = self.find_which_candidate_w_name(cand_win_name)
@@ -68,15 +82,19 @@ class VotingSystem(ABC):
                 return cand
         return None
 
+    # compares the two candidates to see which is preferred head to head
+    # returns the name of the candidate that is more preferred, if tied returns None (empty string)
     def compare(self, comp, pref_schedule, ordering):
         cand1 = self.find_which_candidate_w_name(comp[0])
         cand2 = self.find_which_candidate_w_name(comp[1])
+        # resets condorcet points for all candidates (just to be sure)
         for cand in self.cand_objects:
             cand.condorcet_points = 0
         for i in range(0, len(pref_schedule)):
             order = ordering[i]
             index_one = self.find_index_of(comp[0], order)
             index_two = self.find_index_of(comp[1], order)
+            # whichever candidate has a lower index (more preferred) gets the condorcet_points
             if (index_one < index_two):
                 cand1.condorcet_points += pref_schedule[i]
             elif (index_one > index_two):
@@ -89,6 +107,7 @@ class VotingSystem(ABC):
         elif (cand1.condorcet_points == cand2.condorcet_points):
             return None
 
+    # helper functions
     def find_which_candidate_w_name(self, name):
         for cand in self.cand_objects:
             if cand.name == name:
@@ -101,6 +120,8 @@ class VotingSystem(ABC):
                 return i
         return -1
 
+    # abstract method that are implemented in the derived classes
+
     @abstractmethod
     def determine_winner(self, pref_schedule, cand_obj, poss_order):
         pass
@@ -109,11 +130,13 @@ class VotingSystem(ABC):
     def create_societal_rank(self,pref_schedule, cand_obj, poss_order):
         pass
 
-    #@abstractmethod
-    #def set_votes(self, pref_schedule):
-    #    pass
+    @abstractmethod
+    def set_votes(self, pref_schedule, poss_order):
+        pass
 
-    def find_all_winners(self, num_trials, distribution, weights = None):
+    # function generates random preference schedules in accordance to distribution then finds all condorcet violations
+    # appends the member variable
+    def find_condorcet_vios(self, num_trials, distribution, weights = None):
         for i in range(0, num_trials):
             pref_schedule = []
             if distribution == "IC":
@@ -122,38 +145,35 @@ class VotingSystem(ABC):
                 pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
-            # print(pref_schedule)
-            # print(pref_schedule)
+
             cand_win = self.determine_winner(pref_schedule,self.cand_objects, self.possible_orders)
             cand_condorcet = self.find_Condorcet_candidate(pref_schedule)
 
-
-
+            # compares the winner and the condorcet winner (using derived class implementation)
             # if there is a Condorcet candidate
             if cand_condorcet is not None:
-                # print(cand_condorcet.name)
                 # and no candidate wins
                 if cand_win is None:
                     self.cwc_vio += 1
-                    # print("Violate")
                 elif cand_win.name != cand_condorcet.name:
                     self.cwc_vio += 1
-                    # print("Violate")
-                # print(cand_win.name)
 
-
+    # similar to condorcet function, but this time finds IIA violations for certain range of num_trials
     def find_IIA_violations(self, num_trials, distribution, weights = None):
-            for i in range(0, num_trials):
-                pref_schedule = []
-                if distribution == "IC":
-                    pref_schedule = generate_IC_pref(self.num_voters, self.num_cands)
-                elif distribution == "IAC":
-                    pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
-                elif distribution == "Custom":
-                    pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
+        for i in range(0, num_trials):
+            pref_schedule = []
+            if distribution == "IC":
+                pref_schedule = generate_IC_pref(self.num_voters, self.num_cands)
+            elif distribution == "IAC":
+                pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
+            elif distribution == "Custom":
+                pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-                self.IIA(pref_schedule)
+            self.IIA(pref_schedule)
 
+
+    # implements the IIA algorithm described in the paper found at link below
+    # https://www.sciencedirect.com/science/article/pii/S0176268020300847
     def IIA_paper(self, pref_schedule):
         violated = False
         for comp in self.comparisons:
@@ -161,18 +181,21 @@ class VotingSystem(ABC):
             map_cand = self.create_societal_rank(pref_schedule, self.cand_objects, self.possible_orders)
             one = self.find_which_candidate_w_name(comp[0])
             two = self.find_which_candidate_w_name(comp[1])
+            # finds which candidate in comparison is more highly ranked (winner stays 0 if they are the same)
             if (one.rank < two.rank):
                 winner = 1
             elif (one.rank > two.rank):
                 winner = 2
 
+            # this approach gives us all the candidates not in the comparison
+            # however taking the name of the first name in modified cand only works with 3 candidates
+            # need to find a way to make the algorithm scale for more candidates
             modified_cand = self.cand_objects[:]
             modified_cand.remove(one)
             modified_cand.remove(two)
             cand_name = modified_cand[0].name
 
-
-            #moving C up and down 1 and 2 times
+            # moving C up and down 1 and 2 times
             poss_pref1 = self.move_up(self.possible_orders, cand_name, 1, one, two)
             vio1 = self.check_vio(pref_schedule, winner, one, two, poss_pref1)
             if(vio1 == True):
@@ -197,7 +220,7 @@ class VotingSystem(ABC):
                 violated = True
                 break
 
-            #moving the pair being compared
+            # moving the pair being compared up and down 1 spot, first one then two
             poss_pref5 = self.move_up(self.possible_orders, one.name, 1, one, two)
             vio5 = self.check_vio(pref_schedule, winner, one, two, poss_pref5)
             if (vio5 == True):
@@ -222,6 +245,7 @@ class VotingSystem(ABC):
                 violated = True
                 break
 
+            # carrying out the simultaneous moves in two separate passes as described in the paper
             poss_pref9 = self.sim_move_1(winner, one, two)
             vio9 = self.check_vio(pref_schedule, winner, one, two, poss_pref9)
             if (vio9 == True):
@@ -234,22 +258,23 @@ class VotingSystem(ABC):
                 violated = True
                 break
 
+        # good test to see which pref_schedules do not violate IIA
         #if(violated==False):
          #  print(pref_schedule)
 
 
-
-
-
+    # function takes an ordering and moves the candidate with cand_name up for every order
+    # one and two are also parameters due to conditions of IIA (they cannot swap)
+    # I could make move_up separate and overload it as well to get a move general function
     def move_up(self, ordering, cand_name, amt, one, two):
-
 
         new_pref = []
         copy_of_orders = ordering[:]
         for pref_order in copy_of_orders:
             list_order = list(pref_order)
             idx = list_order.index(cand_name)
-            #make more general past the case of three
+            # this checking of one and two works only in the case of three candidates
+            # it can be extended to more
             if (cand_name == one.name):
                 idx_rival = list_order.index(two.name)
                 if((idx_rival+1) == idx):
@@ -261,8 +286,6 @@ class VotingSystem(ABC):
                     new_pref.append(tuple(list_order))
                     continue
 
-
-
             if (idx >= amt):
                 list_order.remove(cand_name)
                 list_order.insert(idx - amt, cand_name)
@@ -272,7 +295,7 @@ class VotingSystem(ABC):
             new_pref.append(tuple(list_order))
         return new_pref
 
-
+    # analogous logic to move_up
     def move_down(self, ordering,  cand_name, amt, one, two):
         new_pref = []
         end = len(ordering) - 1
@@ -299,6 +322,7 @@ class VotingSystem(ABC):
             new_pref.append(tuple(list_order))
         return new_pref
 
+    # implements the two specific simultaneous moves (more preferred down and less up) that the paper suggests
 
     def sim_move_1(self, winner,one, two):
         mpref_alt = None
@@ -334,13 +358,9 @@ class VotingSystem(ABC):
 
 
 
-
-
-
-
-
-
+    # checks whether preference schedule has IIA violation
     def check_vio(self, pref_sc, winner, one, two, poss_pref):
+        # creates the new societal preference order from the new preference schedule
         new_map = self.create_societal_rank(pref_sc, self.cand_objects,poss_pref)
         if winner == 1 and (one.rank >= two.rank):
             self.IIAv += 1
@@ -356,7 +376,11 @@ class VotingSystem(ABC):
 
 
 
-
+    # IIA aliter implemented which eliminates all candidates not in pair
+    # not very efficient or effective
+    # what you can do is add a case where we only eliminate candidates if they are truly irrevelant
+    # as in if they get less than 10% of the vote
+    # threshold can be a parameter here
 
     def IIA_aliter(self, pref_schedule):
         for comp in self.comparisons:
@@ -374,7 +398,7 @@ class VotingSystem(ABC):
             modified_cand = self.cand_objects[:]
             modified_cand.remove(one)
             modified_cand.remove(two)
-            copy_of_prefs = self.eliminate_cands(modified_cand[0].name)
+            copy_of_prefs = self.eliminate_cands(self.possible_orders,modified_cand[0].name)
             new_map = self.create_societal_rank(pref_schedule,to_use_cand,copy_of_prefs)
             if winner == 1 and (one.rank >= two.rank):
                 self.IIAv += 1
@@ -385,9 +409,9 @@ class VotingSystem(ABC):
             elif winner == 0 and (one.rank != two.rank):
                 self.IIAv += 1
 
-    #should be more sophisticated - take in cand name and eliminate that
-    def eliminate_cands(self, name_to_elim):
-        copy_of_prefs = self.possible_orders[:]
+    # function that eliminates the candidate from a preference schedule
+    def eliminate_cands(self, ordering, name_to_elim):
+        copy_of_prefs = ordering[:]
         to_return_pref = []
         for pref_order in copy_of_prefs:
             list_pref = list(pref_order)
@@ -620,6 +644,97 @@ class BordaCount(VotingSystem):
 
 
 
+class InstantRunoff(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+        self.candidates_remaining = self.cand_objects[:]
+        self.current_pref_table = self.possible_orders[:]
+        self.elec_round = 1
+
+    # takes the same function as plurality
+    def set_votes(self, pref_schedule, poss_order):
+        # setting all candidate votes to 0
+        for cand in self.cand_objects:
+            cand.num_votes = 0
+        count = 0
+        # for each value in the preference schedule
+        for val in pref_schedule:
+            # the first one is the one getting votes
+            name_of_cand_getting_votes = poss_order[count][0]
+            # using find candidate with name function here
+            cand_get_votes = self.find_which_candidate_w_name(name_of_cand_getting_votes)
+            cand_get_votes.num_votes += val
+            count += 1
+
+
+    def run_election(self,pref_schedule, cand_obj, poss_order):
+
+        if(len(cand_obj)==0):
+            return
+        else:
+            self.set_votes(pref_schedule, poss_order)
+            cands_to_elim = self.find_candidates_with_lowest(cand_obj)
+            for cand in cands_to_elim:
+                cand.round_elim = self.elec_round
+                poss_order = self.eliminate_cands(poss_order, cand.name)
+                cand_obj.remove(cand)
+            self.elec_round += 1
+            self.run_election(pref_schedule,cand_obj, poss_order)
+
+    def find_candidates_with_lowest(self, cand_obj):
+        cands_with_least_votes = []
+        cand_with_min = min(cand_obj, key=lambda v:v.num_votes)
+        least_vote = cand_with_min.num_votes
+        for cand in cand_obj:
+            if cand.num_votes == least_vote:
+                cands_with_least_votes.append(cand)
+        return cands_with_least_votes
+
+
+    def create_societal_rank(self, pref_schedule, cand_obj, poss_order):
+        cand_process = cand_obj[:]
+        self.run_election(pref_schedule, cand_process, poss_order)
+        sorted_list = sorted(cand_obj, key=lambda v: v.round_elim, reverse=True)
+        map_of_cands = {}
+        # emulates do while
+        count = 0
+        previous = sorted_list[0].round_elim
+        map_of_cands[count] = []
+        # end of first iteration
+        for cand in sorted_list:
+            if (cand.round_elim == previous):
+                map_of_cands[count].append(cand)
+            else:
+                count += 1
+                map_of_cands[count] = []
+                map_of_cands[count].append(cand)
+            previous = cand.round_elim
+            cand.rank = count
+
+        return map_of_cands
+
+
+
+
+
+
+    def determine_winner(self, pref_schedule, cand_obj, poss_order):
+        cand_obj = cand_obj[:]  # I do not want to modify the actual self.cand_objects
+        societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if (num_top == 1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
+
+
+
+
+
 
 
 
@@ -820,9 +935,16 @@ def main():
     list_of_cand_objects.append(c3)
     #list_of_cand_objects.append(c4)
 
+
+
+    print("Instant Runoff")
+    is_elec = InstantRunoff(10,3,list_of_cand_objects)
+    winner = is_elec.determine_winner([4,0,3,0,0,3],is_elec.cand_objects,is_elec.possible_orders)
+    print(winner.name)
+
     print("US Election")
     us_election = Plurality(1000,3,list_of_cand_objects)
-    us_election.find_all_winners(10000,"Custom",[0.015,0.48,0.015,0.47,0.011,0.009])
+    us_election.find_condorcet_vios(10000,"Custom",[0.015,0.48,0.015,0.47,0.011,0.009])
     us_election.find_IIA_violations(100,"IC")
     print(us_election.cwc_vio)
     print(us_election.IIAv)
@@ -830,14 +952,14 @@ def main():
 
     print("Election 1")
     election = Plurality(4, 3, list_of_cand_objects)
-    election.find_all_winners(10000,"IC")
+    election.find_condorcet_vios(10000,"IC")
     #print(election.cwc_vio)
     print(election.IIAv)
 
 
     print("Election 2")
     election2 = BordaCount(4, 3, list_of_cand_objects)
-    election2.find_all_winners(10000,"IC")
+    election2.find_condorcet_vios(10000,"IC")
     #print(election2.cwc_vio)
     print(election2.IIAv)
 
@@ -854,14 +976,14 @@ def main():
     #pc.IIA([1, 2, 0 ,0 ,1 ,0])
     pc.IIAv = 0
     """
-    pc.find_all_winners(10000,"IC")
+    pc.find_condorcet_vios(10000,"IC")
     #print(pc.cwc_vio)
     print(pc.IIAv)
 
     print("Election 4")
     election4 = Dowdall(4, 3, list_of_cand_objects)
     # election4.determine_winner([1,0,1,1,0,0],election4.cand_objects, election4.possible_orders)
-    election4.find_all_winners(10000,"IC")
+    election4.find_condorcet_vios(10000,"IC")
     print(election4.IIAv)
 
 
