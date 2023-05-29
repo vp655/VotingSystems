@@ -113,18 +113,20 @@ class VotingSystem(ABC):
     #def set_votes(self, pref_schedule):
     #    pass
 
-    def find_all_winners(self, num_trials):
+    def find_all_winners(self, num_trials, distribution, weights = None):
         for i in range(0, num_trials):
-
-            pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
+            pref_schedule = []
+            if distribution == "IC":
+                pref_schedule = generate_IC_pref(self.num_voters, self.num_cands)
+            elif distribution == "IAC":
+                pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
+            elif distribution == "Custom":
+                pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
             # print(pref_schedule)
             # print(pref_schedule)
             cand_win = self.determine_winner(pref_schedule,self.cand_objects, self.possible_orders)
             cand_condorcet = self.find_Condorcet_candidate(pref_schedule)
 
-
-            self.IIA(pref_schedule)
-            #self.IIA_aliter(pref_schedule)
 
 
             # if there is a Condorcet candidate
@@ -138,6 +140,19 @@ class VotingSystem(ABC):
                     self.cwc_vio += 1
                     # print("Violate")
                 # print(cand_win.name)
+
+
+    def find_IIA_violations(self, num_trials, distribution, weights = None):
+            for i in range(0, num_trials):
+                pref_schedule = []
+                if distribution == "IC":
+                    pref_schedule = generate_IC_pref(self.num_voters, self.num_cands)
+                elif distribution == "IAC":
+                    pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
+                elif distribution == "Custom":
+                    pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
+
+                self.IIA(pref_schedule)
 
     def IIA_paper(self, pref_schedule):
         violated = False
@@ -762,6 +777,8 @@ def custom_distribution(num_voters, num_cands, weights):
                 arr[j] += 1
                 break
 
+    #print(arr)
+
     return arr
 
 
@@ -803,17 +820,24 @@ def main():
     list_of_cand_objects.append(c3)
     #list_of_cand_objects.append(c4)
 
+    print("US Election")
+    us_election = Plurality(1000,3,list_of_cand_objects)
+    us_election.find_all_winners(10000,"Custom",[0.015,0.48,0.015,0.47,0.011,0.009])
+    us_election.find_IIA_violations(100,"IC")
+    print(us_election.cwc_vio)
+    print(us_election.IIAv)
+
 
     print("Election 1")
     election = Plurality(4, 3, list_of_cand_objects)
-    election.find_all_winners(10000)
+    election.find_all_winners(10000,"IC")
     #print(election.cwc_vio)
     print(election.IIAv)
 
 
     print("Election 2")
     election2 = BordaCount(4, 3, list_of_cand_objects)
-    election2.find_all_winners(10000)
+    election2.find_all_winners(10000,"IC")
     #print(election2.cwc_vio)
     print(election2.IIAv)
 
@@ -830,14 +854,14 @@ def main():
     #pc.IIA([1, 2, 0 ,0 ,1 ,0])
     pc.IIAv = 0
     """
-    pc.find_all_winners(10000)
+    pc.find_all_winners(10000,"IC")
     #print(pc.cwc_vio)
     print(pc.IIAv)
 
     print("Election 4")
     election4 = Dowdall(4, 3, list_of_cand_objects)
     # election4.determine_winner([1,0,1,1,0,0],election4.cand_objects, election4.possible_orders)
-    election4.find_all_winners(10000)
+    election4.find_all_winners(10000,"IC")
     print(election4.IIAv)
 
 
