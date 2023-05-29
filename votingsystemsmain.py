@@ -116,14 +116,14 @@ class VotingSystem(ABC):
     def find_all_winners(self, num_trials):
         for i in range(0, num_trials):
 
-            pref_schedule = generate_IC_pref(self.num_voters, self.num_cands)
+            pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
             # print(pref_schedule)
             # print(pref_schedule)
             cand_win = self.determine_winner(pref_schedule,self.cand_objects, self.possible_orders)
             cand_condorcet = self.find_Condorcet_candidate(pref_schedule)
 
 
-            self.IIA_paper(pref_schedule)
+            self.IIA(pref_schedule)
             #self.IIA_aliter(pref_schedule)
 
 
@@ -219,8 +219,8 @@ class VotingSystem(ABC):
                 violated = True
                 break
 
-        if(violated==False):
-           print(pref_schedule)
+        #if(violated==False):
+         #  print(pref_schedule)
 
 
 
@@ -424,7 +424,7 @@ class VotingSystem(ABC):
                     #print(new_pref)
                     self.IIAv += 1
                     return
-        print(pref_schedule)
+        #print(pref_schedule)
 
 
 
@@ -658,6 +658,60 @@ class PairwiseComparison(VotingSystem):
             return cand_win
         else:
             return None
+
+
+
+class Dowdall(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+
+    def set_votes(self,pref_schedule, poss_order):
+        for cand in self.cand_objects:
+            cand.num_votes = 0
+
+        count = 0
+        for val in pref_schedule:
+            ordering = poss_order[count]
+            for i in range(0, self.num_cands):
+                cand = self.find_which_candidate_w_name(ordering[i])
+                cand.num_votes += (val * 1/(i+1))
+            count += 1
+
+
+    # this function takes in a preference schedule (list of numbers of length factorial(num_cands) and computes the winner
+    def determine_winner(self, pref_schedule,cand_obj, poss_order):
+
+        societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if (num_top == 1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
+
+    def create_societal_rank(self,pref_schedule, cand_obj, poss_order):
+        self.set_votes(pref_schedule, poss_order)
+        sorted_list = sorted(cand_obj, key=lambda v: v.num_votes, reverse=True)
+        map_of_cands = {}
+        # emulates do while
+        count = 0
+        previous = sorted_list[0].num_votes
+        map_of_cands[count] = []
+        # end of first iteration
+        for cand in sorted_list:
+            if (cand.num_votes == previous):
+                map_of_cands[count].append(cand)
+            else:
+                count += 1
+                map_of_cands[count] = []
+                map_of_cands[count].append(cand)
+            previous = cand.num_votes
+            cand.rank = count
+
+        return map_of_cands
             
 
 # here make methods to generate an IAC one and an IANC one among other cultures
@@ -681,11 +735,10 @@ def generate_IC_pref(num_voters, num_cands):
 
 def generate_IAC_pref(num_voters, num_cands):
     poss_ranks = math.factorial(num_cands)
-    arr = np.zeros(poss_ranks)  # this has num_cands! elements
+    arr = np.zeros(poss_ranks, dtype=int)  # this has num_cands! elements
     end_range = num_voters + poss_ranks - 1
     vals = rand.sample(range(0,end_range),poss_ranks-1)  # 5 random vals from 0 to 15 for example
     sorted_vals = sorted(vals)  # sort the values
-    print(sorted_vals)
     arr[0] = sorted_vals[0]  # the first bar
     for i in range(1,len(sorted_vals)):
         arr[i] = sorted_vals[i] - sorted_vals[i-1] - 1
@@ -739,9 +792,6 @@ def obtain_combos(unique_perms):
 
 
 def main():
-
-    number_of_voters = 3
-    number_of_cands = 3
     list_of_cand_objects = []
     c1 = Candidate('A')
     c2 = Candidate('B')
@@ -753,48 +803,42 @@ def main():
     list_of_cand_objects.append(c3)
     #list_of_cand_objects.append(c4)
 
+
     print("Election 1")
-    election = Plurality(number_of_voters, number_of_cands, list_of_cand_objects)
-    #election.find_all_winners(10000)
+    election = Plurality(4, 3, list_of_cand_objects)
+    election.find_all_winners(10000)
     #print(election.cwc_vio)
     print(election.IIAv)
 
 
     print("Election 2")
-
-    election2 = BordaCount(3, 3, list_of_cand_objects)
-    #election2.find_all_winners(10000)
+    election2 = BordaCount(4, 3, list_of_cand_objects)
+    election2.find_all_winners(10000)
     #print(election2.cwc_vio)
     print(election2.IIAv)
-    
+
     print("Election 3")
 
     pc = PairwiseComparison(4,3,list_of_cand_objects)
-    unique = generate_unique_permutation(4,6)
+    """
+    unique = generate_unique_permutation(3,6)
     real_unique = obtain_combos((unique))
     #pc.IIA([0,0,0,0,1,2])
     for i in real_unique:
         pc.IIA(i)
     print(pc.IIAv)
     #pc.IIA([1, 2, 0 ,0 ,1 ,0])
-    #print(pc.IIAv)
-    #pc.find_all_winners(100)
+    pc.IIAv = 0
+    """
+    pc.find_all_winners(10000)
     #print(pc.cwc_vio)
-    #print(pc.IIAv)
+    print(pc.IIAv)
 
-
-
-    #pc.IIA([1,0,0,0,2,0])
-    #print(pc.IIAv)
-
-
-    # Pariwise Comparison or Copeland should violate IIA every time - paper results not fully accurate
-
-
-
-    #wow = generate_IAC_pref(400, 4)
-    #print(wow)
-    #print(sum(wow))
+    print("Election 4")
+    election4 = Dowdall(4, 3, list_of_cand_objects)
+    # election4.determine_winner([1,0,1,1,0,0],election4.cand_objects, election4.possible_orders)
+    election4.find_all_winners(10000)
+    print(election4.IIAv)
 
 
 

@@ -25,7 +25,7 @@ def obtain_combos(unique_perms):
     return list_of_combos
 
 def main():
-    unique = generate_unique_permutation(30,6)
+    unique = generate_unique_permutation(3,6)
     list_of_combos = obtain_combos(unique)
     print(list_of_combos)
     print(len(list_of_combos))
