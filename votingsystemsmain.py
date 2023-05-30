@@ -421,11 +421,10 @@ class VotingSystem(ABC):
 
 
 
-
-
-
-
-
+    # this is another algorithm to compute IIA violation for a given preference schedule
+    # it generates 100 preference schedules where all the voters have the same relative ranking of a certain pair
+    # if the societal ranking of the pair changes then there exists an IIA violation
+    # can increase 100 to greater value if I want to catch more violations
     def IIA(self, pref_schedule):
         for comp in self.comparisons:
             winner = 0
@@ -438,31 +437,27 @@ class VotingSystem(ABC):
                 winner = 2
 
             self.compare(comp,pref_schedule, self.possible_orders)
-            # we can use these local values
+            # we use these local values since we call compare again and Condorcet winner changes
+            # compare is called again in create societal rank function
             one_c = one.condorcet_points
             two_c = two.condorcet_points
 
-            #increasing this would increase percentages
+            # increasing this would increase percentages of violations caught at the cost of speed
             for j in range(0,100):
 
-                new_pref = self.generate_pref_srr(one, two, one_c, two_c)
-                new_map = self.create_societal_rank(new_pref, self.cand_objects, self.possible_orders)  # this runs through every comparison
-                # note that this calls member function that is defined in the derived class (is that good practice)
+                new_pref = self.generate_pref_srr_v2(one, two, one_c, two_c)  # get a new pref with same relative ranks
+                new_map = self.create_societal_rank(new_pref, self.cand_objects, self.possible_orders)
+                # checks if the relative rank changed
                 if winner == 1 and (one.rank>=two.rank):
-                    #print(one.name + " " + two.name)
-                    #print(new_pref)
                     self.IIAv += 1
                     return
                 elif winner == 2 and (one.rank<=two.rank):
-                    #print(one.name + " " + two.name)
-                    #print(new_pref)
                     self.IIAv += 1
                     return
                 elif winner == 0 and (one.rank != two.rank):
-                    #print(one.name + " " + two.name)
-                    #print(new_pref)
                     self.IIAv += 1
                     return
+        # good testing statement to see which pref_sc do not violate or 'slipped through'
         #print(pref_schedule)
 
 
@@ -471,33 +466,31 @@ class VotingSystem(ABC):
         poss_ranks = math.factorial(self.num_cands)
         arr = np.zeros(poss_ranks,dtype = int)
 
-
-        modified_cand = self.cand_objects[:]
+        modified_cand = self.cand_objects[:]  # shallow copy
         modified_cand.remove(one)
         modified_cand.remove(two)
 
-
-
+        # algorithm to generate a preference schedule with same relative rankings
+        # starts with [A,B] --> then randomly inserts C into any index from 0 to 2, then inserts D, etc.
         for i in range(0,one_c):
             ordering = [one.name,two.name]
             poss_insertions = 2
             for cand in modified_cand:
                 choice = rand.randint(0,poss_insertions)
                 ordering.insert(choice,cand.name)
+                poss_insertions += 1 # we need to increment this here, new candidate means one more slot (case of 4)
             index = self.find_pref_in_all(tuple(ordering))
-
             arr[index] += 1
-            poss_insertions += 1
 
+        # does the same with all the voters who chose [B,A]
         for i in range(0,two_c):
             ordering = [two.name,one.name]
             poss_insertions = 2
             for cand in modified_cand:
                 choice = rand.randint(0,poss_insertions)
                 ordering.insert(choice,cand.name)
-                poss_insertions += 1  # we need to increment this here, think in the case of 4
+                poss_insertions += 1
             index = self.find_pref_in_all(tuple(ordering))
-
             arr[index] += 1
 
 
@@ -508,6 +501,63 @@ class VotingSystem(ABC):
         for i in range(0,len(self.possible_orders)):
             if pref_order == self.possible_orders[i]:
                 return i
+
+    def generate_pref_srr_v2(self, one, two, one_c, two_c):
+
+        poss_ranks = len(self.possible_orders)
+        arr = np.zeros(poss_ranks, dtype=int)  # this has num_cands! elements
+
+        o_index = self.find_index_first_g_second(one, two)
+        t_index = self.find_index_first_g_second(two, one)
+        orders_one_g_two = poss_ranks / 2
+        num_bounds = int(orders_one_g_two) - 1
+
+
+        end_range1 = num_bounds + one_c
+        end_range2 = num_bounds + two_c
+
+
+        # setting the values for the first candidate in comparison
+        temp_arr = np.zeros(int(orders_one_g_two), dtype=int)
+        vals = rand.sample(range(0, end_range1), num_bounds)  # 5 random vals from 0 to 14 for example
+        sorted_vals = sorted(vals)  # sort the values
+        temp_arr[0] = sorted_vals[0]  # the first bar
+        for i in range(1, len(sorted_vals)):
+            temp_arr[i] = sorted_vals[i] - sorted_vals[i - 1] - 1
+        temp_arr[len(sorted_vals)] = end_range1 - sorted_vals[len(sorted_vals) - 1] - 1
+
+        for i in range(0, len(o_index)):
+            arr[o_index[i]] = temp_arr[i]
+
+        # setting the values for the second candidate in comparison
+        temp_arr2 = np.zeros(int(orders_one_g_two), dtype=int)
+        vals2 = rand.sample(range(0, end_range2), num_bounds)  # 5 random vals from 0 to 14 for example
+        sorted_vals2 = sorted(vals2)  # sort the values
+        temp_arr2[0] = sorted_vals2[0]  # the first bar
+        for i in range(1, len(sorted_vals2)):
+            temp_arr2[i] = sorted_vals2[i] - sorted_vals2[i - 1] - 1
+        temp_arr2[len(sorted_vals2)] = end_range2 - sorted_vals2[len(sorted_vals2) - 1] - 1
+        for i in range(0, len(t_index)):
+            arr[t_index[i]] = temp_arr2[i]
+
+        return arr
+
+
+
+
+
+
+    def find_index_first_g_second(self, first, second):
+        index_g = []
+        for i in range(0,len(self.possible_orders)):
+            pref_order = self.possible_orders[i]
+            first_i = self.find_index_of(first.name,pref_order)
+            second_i = self.find_index_of(second.name,pref_order)
+            if(first_i < second_i):
+                index_g.append(i)
+        return index_g
+
+
 
 
 
@@ -937,21 +987,11 @@ def main():
 
 
 
-    print("Instant Runoff")
-    is_elec = InstantRunoff(10,3,list_of_cand_objects)
-    winner = is_elec.determine_winner([4,0,3,0,0,3],is_elec.cand_objects,is_elec.possible_orders)
-    print(winner.name)
-
-    print("US Election")
-    us_election = Plurality(1000,3,list_of_cand_objects)
-    us_election.find_condorcet_vios(10000,"Custom",[0.015,0.48,0.015,0.47,0.011,0.009])
-    us_election.find_IIA_violations(100,"IC")
-    print(us_election.cwc_vio)
-    print(us_election.IIAv)
 
 
     print("Election 1")
-    election = Plurality(4, 3, list_of_cand_objects)
+    election = Plurality(11, 3, list_of_cand_objects)
+    election.find_IIA_violations(1,"IC")
     election.find_condorcet_vios(10000,"IC")
     #print(election.cwc_vio)
     print(election.IIAv)
@@ -985,6 +1025,18 @@ def main():
     # election4.determine_winner([1,0,1,1,0,0],election4.cand_objects, election4.possible_orders)
     election4.find_condorcet_vios(10000,"IC")
     print(election4.IIAv)
+
+    print("Instant Runoff")
+    is_elec = InstantRunoff(10, 3, list_of_cand_objects)
+    winner = is_elec.determine_winner([4, 0, 3, 0, 0, 3], is_elec.cand_objects, is_elec.possible_orders)
+    print(winner.name)
+
+    print("US Election")
+    us_election = Plurality(1000, 3, list_of_cand_objects)
+    us_election.find_condorcet_vios(10000, "Custom", [0.015, 0.48, 0.015, 0.47, 0.011, 0.009])
+    us_election.find_IIA_violations(100, "IC")
+    print(us_election.cwc_vio)
+    print(us_election.IIAv)
 
 
 
