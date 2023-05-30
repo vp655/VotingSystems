@@ -443,7 +443,7 @@ class VotingSystem(ABC):
             two_c = two.condorcet_points
 
             # increasing this would increase percentages of violations caught at the cost of speed
-            for j in range(0,100):
+            for j in range(0,300):
 
                 new_pref = self.generate_pref_srr_v2(one, two, one_c, two_c)  # get a new pref with same relative ranks
                 new_map = self.create_societal_rank(new_pref, self.cand_objects, self.possible_orders)
@@ -987,44 +987,44 @@ def main():
 
 
 
-
-
-    print("Election 1")
-    election = Plurality(11, 3, list_of_cand_objects)
-    election.find_IIA_violations(1,"IC")
-    election.find_condorcet_vios(10000,"IC")
+    #print("Election 1")
+    #election = Plurality(10, 3, list_of_cand_objects)
+    #election.find_IIA_violations(100000,"IC")
+    #election.find_condorcet_vios(10000,"IC")
     #print(election.cwc_vio)
-    print(election.IIAv)
+    #print(election.IIAv)
+
 
 
     print("Election 2")
-    election2 = BordaCount(4, 3, list_of_cand_objects)
-    election2.find_condorcet_vios(10000,"IC")
+    election2 = BordaCount(50, 3, list_of_cand_objects)
+    election2.find_IIA_violations(10000,"IC")
     #print(election2.cwc_vio)
     print(election2.IIAv)
 
+    """
     print("Election 3")
-
     pc = PairwiseComparison(4,3,list_of_cand_objects)
-    """
-    unique = generate_unique_permutation(3,6)
-    real_unique = obtain_combos((unique))
-    #pc.IIA([0,0,0,0,1,2])
-    for i in real_unique:
-        pc.IIA(i)
-    print(pc.IIAv)
-    #pc.IIA([1, 2, 0 ,0 ,1 ,0])
-    pc.IIAv = 0
-    """
-    pc.find_condorcet_vios(10000,"IC")
+    
+    #unique = generate_unique_permutation(3,6)
+    #real_unique = obtain_combos((unique))
+    #for i in real_unique:
+    #    pc.IIA(i)
+    #print(pc.IIAv)
+    #pc.IIAv = 0
+    
+    
+    pc.find_IIA_violations(10000,"IC")
     #print(pc.cwc_vio)
     print(pc.IIAv)
 
+
     print("Election 4")
     election4 = Dowdall(4, 3, list_of_cand_objects)
-    # election4.determine_winner([1,0,1,1,0,0],election4.cand_objects, election4.possible_orders)
-    election4.find_condorcet_vios(10000,"IC")
+    election4.find_IIA_violations(10000,"IC")
     print(election4.IIAv)
+
+    
 
     print("Instant Runoff")
     is_elec = InstantRunoff(10, 3, list_of_cand_objects)
@@ -1037,6 +1037,8 @@ def main():
     us_election.find_IIA_violations(100, "IC")
     print(us_election.cwc_vio)
     print(us_election.IIAv)
+    """
+
 
 
 
