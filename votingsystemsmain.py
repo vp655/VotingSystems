@@ -362,6 +362,7 @@ class VotingSystem(ABC):
     def check_vio(self, pref_sc, winner, one, two, poss_pref):
         # creates the new societal preference order from the new preference schedule
         new_map = self.create_societal_rank(pref_sc, self.cand_objects,poss_pref)
+        # for instance if the winner was one but now one is ranked equally or lower than two
         if winner == 1 and (one.rank >= two.rank):
             self.IIAv += 1
             return True
@@ -381,6 +382,7 @@ class VotingSystem(ABC):
     # what you can do is add a case where we only eliminate candidates if they are truly irrevelant
     # as in if they get less than 10% of the vote
     # threshold can be a parameter here
+    # but that would create even fewer IIA violations
 
     def IIA_aliter(self, pref_schedule):
         for comp in self.comparisons:
@@ -410,6 +412,7 @@ class VotingSystem(ABC):
                 self.IIAv += 1
 
     # function that eliminates the candidate from a preference schedule
+    # it takes in the ordering and eliminates element from each 'column' of the ordering
     def eliminate_cands(self, ordering, name_to_elim):
         copy_of_prefs = ordering[:]
         to_return_pref = []
@@ -493,45 +496,49 @@ class VotingSystem(ABC):
             index = self.find_pref_in_all(tuple(ordering))
             arr[index] += 1
 
-
-
         return(arr)
 
+    # finds which preference order in self.preference orders the ordering corresponds to
     def find_pref_in_all(self,pref_order):
         for i in range(0,len(self.possible_orders)):
             if pref_order == self.possible_orders[i]:
                 return i
 
+    # this is another method to create a new preference schedule that preserves the relative ranking of A and B
+    # this one treats all preference schedules as equally likely
+    # there are the same number of voters preferring A over B and B over A --> does not matter which voters
     def generate_pref_srr_v2(self, one, two, one_c, two_c):
 
         poss_ranks = len(self.possible_orders)
-        arr = np.zeros(poss_ranks, dtype=int)  # this has num_cands! elements
+        arr = np.zeros(poss_ranks, dtype=int)  # this is the array we want to return
 
-        o_index = self.find_index_first_g_second(one, two)
-        t_index = self.find_index_first_g_second(two, one)
+        o_index = self.find_index_first_g_second(one, two)  # all indexes where one is greater than two relatively
+        t_index = self.find_index_first_g_second(two, one)  # analogous logic for two
         orders_one_g_two = poss_ranks / 2
         num_bounds = int(orders_one_g_two) - 1
 
-
+        # this uses the 'IAC' method to generate random numbers
+        # needs (num_bounds + 1) random numbers that sum to one_c and two_c
         end_range1 = num_bounds + one_c
         end_range2 = num_bounds + two_c
 
 
         # setting the values for the first candidate in comparison
         temp_arr = np.zeros(int(orders_one_g_two), dtype=int)
-        vals = rand.sample(range(0, end_range1), num_bounds)  # 5 random vals from 0 to 14 for example
+        vals = rand.sample(range(0, end_range1), num_bounds)  # 2 random vals from 0 to 7 for example (one_c = 6)
         sorted_vals = sorted(vals)  # sort the values
         temp_arr[0] = sorted_vals[0]  # the first bar
         for i in range(1, len(sorted_vals)):
             temp_arr[i] = sorted_vals[i] - sorted_vals[i - 1] - 1
-        temp_arr[len(sorted_vals)] = end_range1 - sorted_vals[len(sorted_vals) - 1] - 1
+        temp_arr[len(sorted_vals)] = end_range1 - sorted_vals[len(sorted_vals) - 1] - 1  # the last bar
 
         for i in range(0, len(o_index)):
             arr[o_index[i]] = temp_arr[i]
 
+        # same logic but for B>A
         # setting the values for the second candidate in comparison
         temp_arr2 = np.zeros(int(orders_one_g_two), dtype=int)
-        vals2 = rand.sample(range(0, end_range2), num_bounds)  # 5 random vals from 0 to 14 for example
+        vals2 = rand.sample(range(0, end_range2), num_bounds)
         sorted_vals2 = sorted(vals2)  # sort the values
         temp_arr2[0] = sorted_vals2[0]  # the first bar
         for i in range(1, len(sorted_vals2)):
@@ -546,7 +553,7 @@ class VotingSystem(ABC):
 
 
 
-
+    # finds all indices where the first candidate is greater than the second candidate in the ordering
     def find_index_first_g_second(self, first, second):
         index_g = []
         for i in range(0,len(self.possible_orders)):
@@ -560,7 +567,7 @@ class VotingSystem(ABC):
 
 
 
-
+# start of derived classes (each one represents a voting system)
 
 
 
@@ -622,13 +629,6 @@ class Plurality(VotingSystem):
 
         return map_of_cands
 
-    # change determine winner now
-    # it calls create societal preference and then picks the first one
-    # if the size is more than 1 of the list, random selection
-    # return the candidate
-
-
-
 
 
 class BordaCount(VotingSystem):
@@ -688,8 +688,6 @@ class BordaCount(VotingSystem):
         return map_of_cands
 
 
-    # this should ideally overload a method in the abstract class
-    # then determine winner just first the first in societal pref order
 
 
 
@@ -894,13 +892,6 @@ class Dowdall(VotingSystem):
         return map_of_cands
             
 
-# here make methods to generate an IAC one and an IANC one among other cultures
-
-
-# then add more classes which inherit from voting systems and implement their own determine winner implementation
-
-
-
 
 
 def generate_IC_pref(num_voters, num_cands):
@@ -926,6 +917,11 @@ def generate_IAC_pref(num_voters, num_cands):
 
     return arr
 
+def generate_IANC(num_voters, num_cands):
+    pass
+
+
+
 def custom_distribution(num_voters, num_cands, weights):
     poss_ranks = math.factorial(num_cands)
     arr = np.zeros(poss_ranks, dtype=int)
@@ -942,18 +938,17 @@ def custom_distribution(num_voters, num_cands, weights):
                 arr[j] += 1
                 break
 
-    #print(arr)
-
     return arr
 
 
-
+# few functions included for testing
 def generate_unique_permutation(n,k):
     voters = np.zeros(n)
     candidates = np.ones(k-1)
     combined_arr = np.concatenate((voters,candidates))
     unique_perms = list(multiset_permutations(combined_arr))
     return unique_perms
+
 
 def obtain_combos(unique_perms):
     list_of_combos = []
@@ -987,17 +982,17 @@ def main():
 
 
 
-    #print("Election 1")
-    #election = Plurality(10, 3, list_of_cand_objects)
+    print("Election 1")
+    election = Plurality(1000, 3, list_of_cand_objects)
     #election.find_IIA_violations(100000,"IC")
-    #election.find_condorcet_vios(10000,"IC")
-    #print(election.cwc_vio)
+    election.find_condorcet_vios(10000,"IC")
+    print(election.cwc_vio)
     #print(election.IIAv)
 
 
 
     print("Election 2")
-    election2 = BordaCount(50, 3, list_of_cand_objects)
+    election2 = BordaCount(30, 3, list_of_cand_objects)
     election2.find_IIA_violations(10000,"IC")
     #print(election2.cwc_vio)
     print(election2.IIAv)
