@@ -5,10 +5,6 @@ for the criterion are all in the Voting System class. Each derived class has its
 create a societal preference order. The simulations are run in the main function and the data gathered.
 """
 
-
-
-
-
 # importing required libraries
 import numpy as np
 from abc import ABC, abstractmethod
@@ -71,11 +67,8 @@ class VotingSystem(ABC):
         for cand in self.cand_objects:
             cand.condorcet_wins = 0
         for comp in self.comparisons:
-            cand_win_name = self.compare(comp, pref_schedule, self.possible_orders)
-            if cand_win_name is None:  # this indicates that a tie occurred
-                continue
-            else:
-                cand_winner = self.find_which_candidate_w_name(cand_win_name)
+            cand_winner = self.compare(comp, pref_schedule, self.possible_orders)
+            if cand_winner is not None:
                 cand_winner.condorcet_wins += 1
         for cand in self.cand_objects:
             if cand.condorcet_wins == self.num_cands - 1:
@@ -100,9 +93,9 @@ class VotingSystem(ABC):
             elif (index_one > index_two):
                 cand2.condorcet_points += pref_schedule[i]
         if (cand1.condorcet_points > cand2.condorcet_points):
-            return cand1.name
+            return cand1
         elif (cand2.condorcet_points > cand1.condorcet_points):
-            return cand2.name
+            return cand2
         # if they have the same amount of points, then neither is a condorcet candidate
         elif (cand1.condorcet_points == cand2.condorcet_points):
             return None
@@ -446,7 +439,7 @@ class VotingSystem(ABC):
             two_c = two.condorcet_points
 
             # increasing this would increase percentages of violations caught at the cost of speed
-            for j in range(0,300):
+            for j in range(0,500):
 
                 new_pref = self.generate_pref_srr_v2(one, two, one_c, two_c)  # get a new pref with same relative ranks
                 new_map = self.create_societal_rank(new_pref, self.cand_objects, self.possible_orders)
@@ -978,22 +971,24 @@ def main():
     list_of_cand_objects.append(c1)
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
-    #list_of_cand_objects.append(c4)
+    list_of_cand_objects.append(c4)
 
 
-
+    """
     print("Election 1")
     election = Plurality(1000, 3, list_of_cand_objects)
     #election.find_IIA_violations(100000,"IC")
     election.find_condorcet_vios(10000,"IC")
     print(election.cwc_vio)
     #print(election.IIAv)
+    """
+
 
 
 
     print("Election 2")
-    election2 = BordaCount(30, 3, list_of_cand_objects)
-    election2.find_IIA_violations(10000,"IC")
+    election2 = BordaCount(10, 4, list_of_cand_objects)
+    election2.find_IIA_violations(10000,"IC")   # test with IAC next
     #print(election2.cwc_vio)
     print(election2.IIAv)
 
