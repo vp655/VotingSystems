@@ -439,7 +439,7 @@ class VotingSystem(ABC):
             two_c = two.condorcet_points
 
             # increasing this would increase percentages of violations caught at the cost of speed
-            for j in range(0,500):
+            for j in range(0,300):
 
                 new_pref = self.generate_pref_srr_v2(one, two, one_c, two_c)  # get a new pref with same relative ranks
                 new_map = self.create_societal_rank(new_pref, self.cand_objects, self.possible_orders)
@@ -971,8 +971,18 @@ def main():
     list_of_cand_objects.append(c1)
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
-    list_of_cand_objects.append(c4)
+    #list_of_cand_objects.append(c4)
 
+    #election = BordaCount(10,3,list_of_cand_objects)
+    #election.create_societal_rank([1,2,3,4,5,6],election.cand_objects, election.possible_orders)
+    #for i in range(0,10000):
+     #   a = election.generate_pref_srr_v2(c1,c2,8,13)
+
+    print("Election 2")
+    election2 = BordaCount(4, 3, list_of_cand_objects)
+    election2.find_IIA_violations(10000,"IC")   # test with IAC next
+    # print(election2.cwc_vio)
+    print(election2.IIAv)
 
     """
     print("Election 1")
@@ -981,18 +991,24 @@ def main():
     election.find_condorcet_vios(10000,"IC")
     print(election.cwc_vio)
     #print(election.IIAv)
-    """
 
 
 
 
-    print("Election 2")
-    election2 = BordaCount(10, 4, list_of_cand_objects)
-    election2.find_IIA_violations(10000,"IC")   # test with IAC next
-    #print(election2.cwc_vio)
-    print(election2.IIAv)
 
-    """
+    
+
+
+
+    print("Instant Runoff Election")
+    rcv = InstantRunoff(1000,3,list_of_cand_objects)
+    rcv.find_condorcet_vios(10000, "IC")
+    print(rcv.cwc_vio)
+
+
+
+
+    
     print("Election 3")
     pc = PairwiseComparison(4,3,list_of_cand_objects)
     
