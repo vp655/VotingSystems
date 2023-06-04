@@ -978,9 +978,14 @@ def main():
     #for i in range(0,10000):
      #   a = election.generate_pref_srr_v2(c1,c2,8,13)
 
+    print("Instant Runoff Election")
+    rcv = InstantRunoff(1000, 3, list_of_cand_objects)
+    rcv.find_condorcet_vios(10000, "IC")
+    print(rcv.cwc_vio)
+
     print("Election 2")
     election2 = BordaCount(4, 3, list_of_cand_objects)
-    election2.find_IIA_violations(10000,"IC")   # test with IAC next
+    #election2.find_IIA_violations(10000,"IC")   # test with IAC next
     # print(election2.cwc_vio)
     print(election2.IIAv)
 
@@ -1000,10 +1005,7 @@ def main():
 
 
 
-    print("Instant Runoff Election")
-    rcv = InstantRunoff(1000,3,list_of_cand_objects)
-    rcv.find_condorcet_vios(10000, "IC")
-    print(rcv.cwc_vio)
+    
 
 
 
