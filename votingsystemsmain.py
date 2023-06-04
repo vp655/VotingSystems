@@ -1057,3 +1057,5 @@ if __name__ == '__main__':
     print(str(end - start) + "(s)")
 
 
+#next steps are to add CLC then unanimty then transitivity before tomorrow
+
