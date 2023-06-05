@@ -227,9 +227,20 @@ class VotingSystem(ABC):
 
             self.IIA(pref_schedule)
 
+    # exact same as in plurality
+    def simple_set(self,pref_schedule, poss_order):
+        for cand in self.cand_objects:
+            cand.num_votes = 0
+        count = 0
+        for val in pref_schedule:
+            name_of_cand_getting_votes = poss_order[count][0]
+            cand_get_votes = self.find_which_candidate_w_name(name_of_cand_getting_votes)
+            cand_get_votes.num_votes += val
+            count += 1
+
 
     def find_major_cand(self, pref_schedule):
-        self.set_votes(pref_schedule, self.possible_orders)
+        self.simple_set(pref_schedule, self.possible_orders)
         for cand in self.cand_objects:
             if(cand.num_votes > (self.num_voters/2)):
                 return cand
@@ -1102,6 +1113,10 @@ def main():
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
     #list_of_cand_objects.append(c4)
+
+    b = BordaCount(10,3,list_of_cand_objects)
+    b.find_majority_violations(10000,"IC")
+    print(b.majority_vio)
 
     election1 = Plurality(5,3,list_of_cand_objects)
     #election1.violates_unanimity([5,0,0,0,0,0])
