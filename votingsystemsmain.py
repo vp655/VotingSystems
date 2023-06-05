@@ -28,6 +28,8 @@ class Candidate:
         # for instant runoff
         self.round_elim = 0
 
+        self.condorcet_losses = 0
+
 
 # abstract base class of the voting systems
 class VotingSystem(ABC):
@@ -47,6 +49,7 @@ class VotingSystem(ABC):
         # for simple case gives [A,B] [B,C] [A,C]
 
         self.cwc_vio = 0  # how many Condorcet winner criterion violations there are
+        self.clc_vio = 0
         self.IIAv = 0
         self.majority_vio = 0
 
@@ -97,6 +100,42 @@ class VotingSystem(ABC):
         elif (cand2.condorcet_points > cand1.condorcet_points):
             return cand2
         # if they have the same amount of points, then neither is a condorcet candidate
+        elif (cand1.condorcet_points == cand2.condorcet_points):
+            return None
+
+    def find_Condorcet_loser(self, pref_schedule):
+        for cand in self.cand_objects:
+            cand.condorcet_losses = 0
+        for comp in self.comparisons:
+            cand_loser = self.compare_loser(comp, pref_schedule, self.possible_orders)
+            if cand_loser is not None:
+                cand_loser.condorcet_losses += 1
+        for cand in self.cand_objects:
+            if cand.condorcet_losses == self.num_cands - 1:
+                return cand
+        return None
+
+
+    def compare_loser(self, comp, pref_schedule, ordering):
+        cand1 = self.find_which_candidate_w_name(comp[0])
+        cand2 = self.find_which_candidate_w_name(comp[1])
+        # resets condorcet points for all candidates (just to be sure)
+        for cand in self.cand_objects:
+            cand.condorcet_points = 0
+        for i in range(0, len(pref_schedule)):
+            order = ordering[i]
+            index_one = self.find_index_of(comp[0], order)
+            index_two = self.find_index_of(comp[1], order)
+            # whichever candidate has a lower index (more preferred) gets the condorcet_points
+            if (index_one < index_two):
+                cand1.condorcet_points += pref_schedule[i]
+            elif (index_one > index_two):
+                cand2.condorcet_points += pref_schedule[i]
+        if (cand1.condorcet_points < cand2.condorcet_points):
+            return cand1
+        elif (cand2.condorcet_points < cand1.condorcet_points):
+            return cand2
+        # if they have the same amount of points, then neither is a condorcet loser candidate
         elif (cand1.condorcet_points == cand2.condorcet_points):
             return None
 
@@ -151,6 +190,29 @@ class VotingSystem(ABC):
                 elif cand_win.name != cand_condorcet.name:
                     self.cwc_vio += 1
 
+    def find_condorcet_loser_vios(self, num_trials, distribution, weights = None):
+        for i in range(0, num_trials):
+            pref_schedule = []
+            if distribution == "IC":
+                pref_schedule = generate_IC_pref(self.num_voters, self.num_cands)
+            elif distribution == "IAC":
+                pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
+            elif distribution == "Custom":
+                pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
+
+            cand_win = self.determine_winner(pref_schedule,self.cand_objects, self.possible_orders)
+            cand_condorcet_loser = self.find_Condorcet_loser(pref_schedule)
+
+            # compares the winner and the condorcet winner (using derived class implementation)
+            # if there is a Condorcet candidate
+            if cand_condorcet_loser is not None:
+                #if cand_condorcet_loser.num_votes == cand_win.num_votes:
+                # and no candidate wins
+                if cand_win.name == cand_condorcet_loser.name:
+                    print(pref_schedule)
+                    self.clc_vio += 1
+
+
     # similar to condorcet function, but this time finds IIA violations for certain range of num_trials
     def find_IIA_violations(self, num_trials, distribution, weights = None):
         for i in range(0, num_trials):
@@ -163,6 +225,32 @@ class VotingSystem(ABC):
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
             self.IIA(pref_schedule)
+
+
+    def find_major_cand(self, pref_schedule):
+        self.set_votes(pref_schedule, self.possible_orders)
+        for cand in self.cand_objects:
+            if(cand.num_votes > (self.num_voters/2)):
+                return cand
+        return None
+
+    def find_majority_violations(self, num_trials, distribution, weights = None):
+        for i in range(0, num_trials):
+            pref_schedule = []
+            if distribution == "IC":
+                pref_schedule = generate_IC_pref(self.num_voters, self.num_cands)
+            elif distribution == "IAC":
+                pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
+            elif distribution == "Custom":
+                pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
+
+            major_winner = self.find_major_cand(pref_schedule)
+            real_winner = self.determine_winner(pref_schedule,self.cand_objects, self.possible_orders)
+            if major_winner is not None:
+                if major_winner.name != real_winner.name:
+                    self.majority_vio += 1
+
+
 
 
     # implements the IIA algorithm described in the paper found at link below
@@ -560,6 +648,11 @@ class VotingSystem(ABC):
 
 
 
+
+
+
+
+
 # start of derived classes (each one represents a voting system)
 
 
@@ -632,6 +725,7 @@ class BordaCount(VotingSystem):
     def set_votes(self,pref_schedule, poss_order):
         for cand in self.cand_objects:
             cand.points = 0
+            cand.num_votes = 0
 
         count = 0
         for val in pref_schedule:
@@ -973,6 +1067,12 @@ def main():
     list_of_cand_objects.append(c3)
     #list_of_cand_objects.append(c4)
 
+    election1 = Plurality(5,3,list_of_cand_objects)
+    election1.find_condorcet_loser_vios(10000, "IC")
+    print(election1.clc_vio)
+
+    """
+
     #election = BordaCount(10,3,list_of_cand_objects)
     #election.create_societal_rank([1,2,3,4,5,6],election.cand_objects, election.possible_orders)
     #for i in range(0,10000):
@@ -989,7 +1089,7 @@ def main():
     # print(election2.cwc_vio)
     print(election2.IIAv)
 
-    """
+    
     print("Election 1")
     election = Plurality(1000, 3, list_of_cand_objects)
     #election.find_IIA_violations(100000,"IC")
