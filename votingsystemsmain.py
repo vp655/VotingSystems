@@ -30,6 +30,12 @@ class Candidate:
 
         self.condorcet_losses = 0
 
+    def __eq__(self,other):
+        return self.name == other.name
+
+    def __gt__(self,other):
+        return self.condorcet_points > other.condorcet_points
+
 
 # abstract base class of the voting systems
 class VotingSystem(ABC):
@@ -45,6 +51,7 @@ class VotingSystem(ABC):
         self.generate_candidates_combos()  # generates all preference orders
 
         self.comparisons = list(combinations(self.cand_names, 2))
+        self.three_element_comps = list(combinations(self.cand_names,3))
         # gives all the possible comparisons between the two candidates
         # for simple case gives [A,B] [B,C] [A,C]
 
@@ -53,6 +60,7 @@ class VotingSystem(ABC):
         self.IIAv = 0
         self.majority_vio = 0
         self.unam_vios = 0
+        self.transitivity_vio = 0
 
     # this function sets all the candidate names from the candidate objects
     def set_candidate_names(self):
@@ -691,6 +699,47 @@ class VotingSystem(ABC):
                     #print(preference_schedule)
                     return True
         return False
+
+
+
+    def find_transitivity_vios(self,num_trials, distribution, weights=None):
+        for i in range(0, num_trials):
+            pref_schedule = []
+            if distribution == "IC":
+                pref_schedule = generate_IC_pref(self.num_voters, self.num_cands)
+            elif distribution == "IAC":
+                pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
+            elif distribution == "Custom":
+                pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
+
+            vios = self.violates_transitivity(pref_schedule)
+            if(vios):
+                self.transitivity_vio += 1
+
+
+
+    def violates_transitivity(self,pref_schedule):
+
+        for comp in self.three_element_comps:
+            one = self.find_which_candidate_w_name(comp[0])
+            two = self.find_which_candidate_w_name(comp[1])
+            three = self.find_which_candidate_w_name(comp[2])
+            self.create_societal_rank(pref_schedule, self.cand_objects, self.possible_orders)
+
+            poss_comps = list(combinations(comp,2))  # [A,B], [A,C], [B,C]
+            self.compare(poss_comps[0],pref_schedule,self.possible_orders)
+
+            # work on this algorithm - have an idea but I want to simplify
+
+
+
+            if one> two and two > three and three > one:
+                return True
+            elif two > one and one > three and three > two:
+                return True
+        return False
+
+
 
 
 
