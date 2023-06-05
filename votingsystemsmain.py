@@ -52,6 +52,7 @@ class VotingSystem(ABC):
         self.clc_vio = 0
         self.IIAv = 0
         self.majority_vio = 0
+        self.unam_vios = 0
 
     # this function sets all the candidate names from the candidate objects
     def set_candidate_names(self):
@@ -646,6 +647,41 @@ class VotingSystem(ABC):
         return index_g
 
 
+    def find_unanimity_vios(self,num_trials, distribution, weights=None):
+        for i in range(0, num_trials):
+            pref_schedule = []
+            if distribution == "IC":
+                pref_schedule = generate_IC_pref(self.num_voters, self.num_cands)
+            elif distribution == "IAC":
+                pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
+            elif distribution == "Custom":
+                pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
+
+            vios = self.violates_unanimity(pref_schedule)
+            if(vios):
+                self.unam_vios += 1
+
+
+    def violates_unanimity(self, preference_schedule):
+        for comp in self.comparisons:
+            one = self.find_which_candidate_w_name(comp[0])
+            two = self.find_which_candidate_w_name(comp[1])
+            self.create_societal_rank(preference_schedule,self.cand_objects, self.possible_orders)
+            # now we have relative ranking of one and two
+            one_r = one.rank
+            two_r = two.rank
+            self.compare(comp,preference_schedule,self.possible_orders)
+            if(one.condorcet_points == self.num_voters):
+                if(one_r >= two_r):
+                    #print(preference_schedule)
+                    return True
+            elif(two.condorcet_points == self.num_voters):
+                if(two_r >= one_r):
+                    #print(preference_schedule)
+                    return True
+        return False
+
+
 
 
 
@@ -1068,8 +1104,9 @@ def main():
     #list_of_cand_objects.append(c4)
 
     election1 = Plurality(5,3,list_of_cand_objects)
-    election1.find_condorcet_loser_vios(10000, "IC")
-    print(election1.clc_vio)
+    #election1.violates_unanimity([5,0,0,0,0,0])
+    election1.find_unanimity_vios(10000, "IAC")
+    print(election1.unam_vios)
 
     """
 
