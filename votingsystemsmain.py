@@ -33,8 +33,8 @@ class Candidate:
     def __eq__(self,other):
         return self.name == other.name
 
-    def __gt__(self,other):
-        return self.condorcet_points > other.condorcet_points
+    def __ge__(self,other):
+        return self.condorcet_points >= other.condorcet_points
 
 
 # abstract base class of the voting systems
@@ -51,7 +51,7 @@ class VotingSystem(ABC):
         self.generate_candidates_combos()  # generates all preference orders
 
         self.comparisons = list(combinations(self.cand_names, 2))
-        self.three_element_comps = list(combinations(self.cand_names,3))
+        self.three_element_comps = list(permutations(self.cand_names,3))
         # gives all the possible comparisons between the two candidates
         # for simple case gives [A,B] [B,C] [A,C]
 
@@ -719,28 +719,20 @@ class VotingSystem(ABC):
 
 
     def violates_transitivity(self,pref_schedule):
-
+    # checks to find a condorcet cycle in each three element subset
         for comp in self.three_element_comps:
+            # get the three candidates for comparison
             one = self.find_which_candidate_w_name(comp[0])
             two = self.find_which_candidate_w_name(comp[1])
             three = self.find_which_candidate_w_name(comp[2])
-            self.create_societal_rank(pref_schedule, self.cand_objects, self.possible_orders)
-
-            poss_comps = list(combinations(comp,2))  # [A,B], [A,C], [B,C]
-            self.compare(poss_comps[0],pref_schedule,self.possible_orders)
-
-            # work on this algorithm - have an idea but I want to simplify
-
-
-
-            if one> two and two > three and three > one:
-                return True
-            elif two > one and one > three and three > two:
-                return True
+            self.compare([comp[0],comp[1]],pref_schedule,self.possible_orders)
+            if(one>=two):  # I defined the relational operator in the class
+                self.compare([comp[1], comp[2]], pref_schedule, self.possible_orders)
+                if (two >= three):
+                    self.compare([comp[0],comp[2]],pref_schedule,self.possible_orders)
+                    if((one>=three) == False):
+                        return True
         return False
-
-
-
 
 
 
@@ -967,7 +959,7 @@ class InstantRunoff(VotingSystem):
 
 
 
-
+# this is also called Copeland
 
 class PairwiseComparison(VotingSystem):
 
@@ -1163,14 +1155,18 @@ def main():
     list_of_cand_objects.append(c3)
     #list_of_cand_objects.append(c4)
 
-    b = BordaCount(10,3,list_of_cand_objects)
+    b = BordaCount(30,3,list_of_cand_objects)
+    b.find_transitivity_vios(10000,"IC")
+    print(b.transitivity_vio/10000)
     b.find_majority_violations(10000,"IC")
-    print(b.majority_vio)
+    #print(b.majority_vio)
 
-    election1 = Plurality(5,3,list_of_cand_objects)
+    election1 = Plurality(30,3,list_of_cand_objects)
+    election1.find_transitivity_vios(10000,"IAC")
+    print(election1.transitivity_vio/10000)
     #election1.violates_unanimity([5,0,0,0,0,0])
     election1.find_unanimity_vios(10000, "IAC")
-    print(election1.unam_vios)
+    #print(election1.unam_vios)
 
     """
 
