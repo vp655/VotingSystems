@@ -34,7 +34,7 @@ class Candidate:
         return self.name == other.name
 
     def __ge__(self,other):
-        return self.condorcet_points >= other.condorcet_points
+        return self.rank >= other.rank
 
 
 # abstract base class of the voting systems
@@ -173,6 +173,10 @@ class VotingSystem(ABC):
 
     @abstractmethod
     def set_votes(self, pref_schedule, poss_order):
+        pass
+
+    @abstractmethod
+    def type(self):
         pass
 
     # function generates random preference schedules in accordance to distribution then finds all condorcet violations
@@ -712,7 +716,11 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-            vios = self.violates_transitivity(pref_schedule)  # this is for pairwise majority
+            vios = False
+            if self.type() == "Pairwise Majority":
+                vios = self.pairwise_majority_violates_transitivity(pref_schedule) # this is for pairwise majority
+            else:
+                vios = self.violates_transitivity_real(pref_schedule)
             if(vios):
                 self.transitivity_vio += 1
 
@@ -730,22 +738,24 @@ class VotingSystem(ABC):
                     return True
         return False
 
-
-    def violates_transitivity(self,pref_schedule):
-    # checks to find a condorcet cycle in each three element subset
+    # pairwise majority satisfies all the other criterion, this is the only one we need to check
+    def pairwise_majority_violates_transitivity(self, pref_schedule):
+        # checks to find a condorcet cycle in each three element subset
         for comp in self.three_element_comps:
             # get the three candidates for comparison
             one = self.find_which_candidate_w_name(comp[0])
             two = self.find_which_candidate_w_name(comp[1])
             three = self.find_which_candidate_w_name(comp[2])
-            self.compare([comp[0],comp[1]],pref_schedule,self.possible_orders)
-            if(one>=two):  # I defined the relational operator in the class
+            self.compare([comp[0], comp[1]], pref_schedule, self.possible_orders)
+            if (one.condorcet_points >= two.condorcet_points):  # I defined the relational operator in the class
                 self.compare([comp[1], comp[2]], pref_schedule, self.possible_orders)
-                if (two >= three):
-                    self.compare([comp[0],comp[2]],pref_schedule,self.possible_orders)
-                    if((one>=three) == False):
+                if (two.condorcet_points >= three.condorcet_points):
+                    self.compare([comp[0], comp[2]], pref_schedule, self.possible_orders)
+                    if ((one.condorcet_points >= three.condorcet_points) == False):
                         return True
         return False
+
+
 
 
 
@@ -817,6 +827,10 @@ class Plurality(VotingSystem):
         return map_of_cands
 
 
+    def type(self):
+        return "Plurality"
+
+
 
 class BordaCount(VotingSystem):
 
@@ -874,6 +888,11 @@ class BordaCount(VotingSystem):
             cand.rank = count
 
         return map_of_cands
+
+
+
+    def type(self):
+        return "Borda Count"
 
 
 
@@ -955,6 +974,10 @@ class InstantRunoff(VotingSystem):
 
 
 
+
+
+
+
     def determine_winner(self, pref_schedule, cand_obj, poss_order):
         cand_obj = cand_obj[:]  # I do not want to modify the actual self.cand_objects
         societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
@@ -966,6 +989,11 @@ class InstantRunoff(VotingSystem):
             return cand_win
         else:
             return None
+
+
+
+    def type(self):
+        return "Instant Runoff"
 
 
 
@@ -1026,6 +1054,37 @@ class PairwiseComparison(VotingSystem):
             return None
 
 
+    def type(self):
+        return "Pairwise Comparison"
+
+
+class PairwiseMajority(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+
+    # fillers functions for now
+
+    def set_votes(self, pref_schedule, poss_order):
+        cond_cand = self.find_Condorcet_candidate(pref_schedule)
+        return cond_cand
+
+    def create_societal_rank(self,pref_schedule, cand_obj, poss_order):
+        # this cannot create a transitive one
+        cond_cand = self.set_votes(pref_schedule, poss_order)
+        return cond_cand
+
+    def determine_winner(self, pref_schedule, cand_obj, poss_order):
+        cond_cand = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        return cond_cand
+
+
+
+
+    def type(self):
+        return "Pairwise Majority"
+
+
 
 class Dowdall(VotingSystem):
 
@@ -1078,6 +1137,13 @@ class Dowdall(VotingSystem):
             cand.rank = count
 
         return map_of_cands
+
+
+    def type(self):
+        return "Dowdall"
+
+
+# end of derived classes
             
 
 
@@ -1156,6 +1222,16 @@ def obtain_combos(unique_perms):
 
 
 
+
+
+
+
+
+
+
+
+
+
 def main():
     list_of_cand_objects = []
     c1 = Candidate('A')
@@ -1166,19 +1242,19 @@ def main():
     list_of_cand_objects.append(c1)
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
-    #list_of_cand_objects.append(c4)
+    list_of_cand_objects.append(c4)
 
-    b = BordaCount(30,3,list_of_cand_objects)
-    b.find_transitivity_vios(10000,"IC")
-    print(b.transitivity_vio/10000)
-    b.find_majority_violations(10000,"IC")
+    #b = BordaCount(30,3,list_of_cand_objects)
+    #b.find_transitivity_vios(10000,"IC")
+    #print(b.transitivity_vio/10000)
+    #b.find_majority_violations(10000,"IC")
     #print(b.majority_vio)
 
-    election1 = Plurality(30,3,list_of_cand_objects)
-    election1.find_transitivity_vios(10000,"IAC")
+    election1 = PairwiseMajority(30,3,list_of_cand_objects)
+    election1.find_transitivity_vios(10000,"IC")
     print(election1.transitivity_vio/10000)
     #election1.violates_unanimity([5,0,0,0,0,0])
-    election1.find_unanimity_vios(10000, "IAC")
+    #election1.find_unanimity_vios(10000, "IAC")
     #print(election1.unam_vios)
 
     """
