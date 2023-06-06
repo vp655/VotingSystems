@@ -712,10 +712,23 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-            vios = self.violates_transitivity(pref_schedule)
+            vios = self.violates_transitivity(pref_schedule)  # this is for pairwise majority
             if(vios):
                 self.transitivity_vio += 1
 
+
+
+    def violates_transitivity_real(self, pref_schedule):
+        for comp in self.three_element_comps:
+            # get the three candidates for comparison
+            one = self.find_which_candidate_w_name(comp[0])
+            two = self.find_which_candidate_w_name(comp[1])
+            three = self.find_which_candidate_w_name(comp[2])
+            self.create_societal_rank(pref_schedule, self.cand_objects, self.possible_orders)
+            if(one.rank<=two.rank and two.rank<=three.rank):
+                if(one.rank > three.rank):
+                    return True
+        return False
 
 
     def violates_transitivity(self,pref_schedule):
