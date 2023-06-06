@@ -29,6 +29,7 @@ class Candidate:
         self.round_elim = 0
 
         self.condorcet_losses = 0
+        self.last_place_votes = 0
 
     def __eq__(self,other):
         return self.name == other.name
@@ -999,6 +1000,107 @@ class InstantRunoff(VotingSystem):
 
 
 
+class Coombs(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+        self.candidates_remaining = self.cand_objects[:]
+        self.current_pref_table = self.possible_orders[:]
+        self.elec_round = 1
+
+    # takes the same function as plurality
+    def set_votes(self, pref_schedule, poss_order):
+        temp_num_cands = len(poss_order[0])
+        # setting all candidate votes to 0
+        for cand in self.cand_objects:
+            cand.last_place_votes = 0
+        count = 0
+        # for each value in the preference schedule
+        for val in pref_schedule:
+            # the first one is the one getting votes
+            name_of_cand_getting_last_votes = poss_order[count][temp_num_cands - 1]
+            # using find candidate with name function here
+            cand_get_votes = self.find_which_candidate_w_name(name_of_cand_getting_last_votes)
+            cand_get_votes.last_place_votes += val
+            count += 1
+
+
+    def run_election(self,pref_schedule, cand_obj, poss_order):
+
+        if(len(cand_obj)==0):
+            return
+        else:
+            self.set_votes(pref_schedule, poss_order)
+            cands_to_elim = self.find_candidates_with_highest_last(cand_obj)
+            for cand in cands_to_elim:
+                cand.round_elim = self.elec_round
+                poss_order = self.eliminate_cands(poss_order, cand.name)
+                cand_obj.remove(cand)
+            self.elec_round += 1
+            self.run_election(pref_schedule,cand_obj, poss_order)
+
+    def find_candidates_with_highest_last(self, cand_obj):
+        cands_with_most_last = []
+        cand_with_max = max(cand_obj, key=lambda v: v.last_place_votes)
+        most_last_vote = cand_with_max.last_place_votes
+        for cand in cand_obj:
+            if cand.last_place_votes == most_last_vote:
+                cands_with_most_last.append(cand)
+        return cands_with_most_last
+
+
+    def create_societal_rank(self, pref_schedule, cand_obj, poss_order):
+        cand_process = cand_obj[:]
+        self.run_election(pref_schedule, cand_process, poss_order)
+        sorted_list = sorted(cand_obj, key=lambda v: v.round_elim, reverse=True)
+        map_of_cands = {}
+        # emulates do while
+        count = 0
+        previous = sorted_list[0].round_elim
+        map_of_cands[count] = []
+        # end of first iteration
+        for cand in sorted_list:
+            if (cand.round_elim == previous):
+                map_of_cands[count].append(cand)
+            else:
+                count += 1
+                map_of_cands[count] = []
+                map_of_cands[count].append(cand)
+            previous = cand.round_elim
+            cand.rank = count
+
+        return map_of_cands
+
+
+
+
+
+
+
+
+
+
+    def determine_winner(self, pref_schedule, cand_obj, poss_order):
+        cand_obj = cand_obj[:]  # I do not want to modify the actual self.cand_objects
+        societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if (num_top == 1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
+
+
+
+    def type(self):
+        return "Coombs"
+
+
+
+
+
 
 # this is also called Copeland
 
@@ -1249,6 +1351,9 @@ def main():
     #print(b.transitivity_vio/10000)
     #b.find_majority_violations(10000,"IC")
     #print(b.majority_vio)
+
+    c = Coombs(70,4,list_of_cand_objects)
+    c.determine_winner([10,1,2,3,0,0,20,0,0,0,5,1,0,0,2,3,1,2,5,6,9,0,0,0], c.cand_objects, c.possible_orders)
 
     election1 = PairwiseMajority(30,3,list_of_cand_objects)
     election1.find_transitivity_vios(10000,"IC")
