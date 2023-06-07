@@ -180,6 +180,23 @@ class VotingSystem(ABC):
     def type(self):
         pass
 
+
+
+
+    def violates_condorcet(self, pref_schedule):
+        cand_win = self.determine_winner(pref_schedule, self.cand_objects, self.possible_orders)
+        cand_condorcet = self.find_Condorcet_candidate(pref_schedule)
+
+        # compares the winner and the condorcet winner (using derived class implementation)
+        # if there is a Condorcet candidate
+        if cand_condorcet is not None:
+            # and no candidate wins
+            if cand_win is None:
+                return True
+            elif cand_win.name != cand_condorcet.name:
+                return True
+
+
     # function generates random preference schedules in accordance to distribution then finds all condorcet violations
     # appends the member variable
     def find_condorcet_vios(self, num_trials, distribution, weights = None):
@@ -192,17 +209,23 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-            cand_win = self.determine_winner(pref_schedule,self.cand_objects, self.possible_orders)
-            cand_condorcet = self.find_Condorcet_candidate(pref_schedule)
+            vio_cond = self.violates_condorcet(pref_schedule)
+            if(vio_cond):
+                self.cwc_vio += 1
 
-            # compares the winner and the condorcet winner (using derived class implementation)
-            # if there is a Condorcet candidate
-            if cand_condorcet is not None:
-                # and no candidate wins
-                if cand_win is None:
-                    self.cwc_vio += 1
-                elif cand_win.name != cand_condorcet.name:
-                    self.cwc_vio += 1
+
+    def violates_condorcet_loser(self, pref_schedule):
+        cand_win = self.determine_winner(pref_schedule, self.cand_objects, self.possible_orders)
+        cand_condorcet_loser = self.find_Condorcet_loser(pref_schedule)
+
+        # compares the winner and the condorcet winner (using derived class implementation)
+        # if there is a Condorcet candidate
+        if cand_condorcet_loser is not None:
+            #if cand_condorcet_loser.num_votes == cand_win.num_votes:
+            # and no candidate wins
+            if cand_win.name == cand_condorcet_loser.name:
+                #print(pref_schedule)
+                return True
 
     def find_condorcet_loser_vios(self, num_trials, distribution, weights = None):
         for i in range(0, num_trials):
@@ -214,17 +237,11 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-            cand_win = self.determine_winner(pref_schedule,self.cand_objects, self.possible_orders)
-            cand_condorcet_loser = self.find_Condorcet_loser(pref_schedule)
+            vio_cond_loser = self.violates_condorcet_loser(pref_schedule)
+            if(vio_cond_loser):
+                self.clc_vio += 1
 
-            # compares the winner and the condorcet winner (using derived class implementation)
-            # if there is a Condorcet candidate
-            if cand_condorcet_loser is not None:
-                #if cand_condorcet_loser.num_votes == cand_win.num_votes:
-                # and no candidate wins
-                if cand_win.name == cand_condorcet_loser.name:
-                    print(pref_schedule)
-                    self.clc_vio += 1
+
 
 
     # similar to condorcet function, but this time finds IIA violations for certain range of num_trials
@@ -1352,13 +1369,23 @@ def main():
     #b.find_majority_violations(10000,"IC")
     #print(b.majority_vio)
 
-    c = Coombs(70,4,list_of_cand_objects)
-    c.determine_winner([10,1,2,3,0,0,20,0,0,0,5,1,0,0,2,3,1,2,5,6,9,0,0,0], c.cand_objects, c.possible_orders)
+    #c = Coombs(70,4,list_of_cand_objects)
+    #c.determine_winner([10,1,2,3,0,0,20,0,0,0,5,1,0,0,2,3,1,2,5,6,9,0,0,0], c.cand_objects, c.possible_orders)
 
-    election1 = PairwiseMajority(30,3,list_of_cand_objects)
-    election1.find_transitivity_vios(10000,"IC")
-    print(election1.transitivity_vio/10000)
+    list_of_cand_objects.remove(c4)
+
+    election1 = Plurality(5,3,list_of_cand_objects)
+    election1.find_condorcet_vios(10000,"IC")
+    print(election1.cwc_vio)
+    election1.find_condorcet_loser_vios(10000,"IC")
+    print(election1.clc_vio)
+
+
+    #election1.find_transitivity_vios(10000,"IC")
+    #print(election1.transitivity_vio/10000)
     #election1.violates_unanimity([5,0,0,0,0,0])
+    #boole = election1.violates_unanimity([0,0,0,0,1,2])
+    #print(boole)
     #election1.find_unanimity_vios(10000, "IAC")
     #print(election1.unam_vios)
 
