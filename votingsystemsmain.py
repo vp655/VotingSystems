@@ -915,6 +915,12 @@ class BordaCount(VotingSystem):
 
 
 
+class TruncatedBorda(VotingSystem):
+    pass
+
+
+
+
 
 
 class InstantRunoff(VotingSystem):
@@ -1177,6 +1183,8 @@ class PairwiseComparison(VotingSystem):
         return "Pairwise Comparison"
 
 
+# really need to see whether this is the right implementation
+# the transitivity function is good though - this is the only system that violates transitivity
 class PairwiseMajority(VotingSystem):
 
     def __init__(self, num_voters, num_cands, cand_objects):
@@ -1260,6 +1268,35 @@ class Dowdall(VotingSystem):
 
     def type(self):
         return "Dowdall"
+
+
+
+class Black(VotingSystem):
+    pass
+
+# this one is if there is condorcet, elect, otherwise use Borda - seems promising to reduce CWC_vio - check IIA
+
+class TopTwo(VotingSystem):
+
+    def set_votes(self, pref_schedule, poss_order):
+        pass
+
+    def roundtwo(self):
+        print("this will just be a comparison")
+        print("I could use compare function")
+
+
+class Dictatorship(VotingSystem):
+    pass
+
+# randomly select dictator?
+
+class ImposedRule(VotingSystem):
+    pass
+
+# randomly select winning candidate? - but it has to be fixed throughout
+
+# these last two should never violate IIA
 
 
 # end of derived classes
