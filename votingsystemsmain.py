@@ -239,6 +239,7 @@ class VotingSystem(ABC):
 
             vio_cond_loser = self.violates_condorcet_loser(pref_schedule)
             if(vio_cond_loser):
+                print(pref_schedule)
                 self.clc_vio += 1
 
 
@@ -1411,12 +1412,26 @@ def main():
 
     list_of_cand_objects.remove(c4)
 
+
+    bordel = BordaCount(100,3,list_of_cand_objects)
+    bordel.find_condorcet_loser_vios(10000, "IAC")
+    print(bordel.clc_vio)
+    bordel.find_unanimity_vios(10000,"IC")
+    print(bordel.unam_vios)
+
     election1 = Plurality(5,3,list_of_cand_objects)
     election1.find_condorcet_vios(10000,"IC")
     print(election1.cwc_vio)
     election1.find_condorcet_loser_vios(10000,"IC")
     print(election1.clc_vio)
 
+
+    print("Next election")
+    rcv = InstantRunoff(100,3,list_of_cand_objects)
+    rcv.find_condorcet_vios(10000,"IC")
+    print(rcv.cwc_vio)
+    rcv.find_condorcet_loser_vios(10000, "IAC")
+    print(rcv.clc_vio)
 
     #election1.find_transitivity_vios(10000,"IC")
     #print(election1.transitivity_vio/10000)
