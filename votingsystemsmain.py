@@ -196,6 +196,8 @@ class VotingSystem(ABC):
             elif cand_win.name != cand_condorcet.name:
                 return True
 
+        return False
+
 
     # function generates random preference schedules in accordance to distribution then finds all condorcet violations
     # appends the member variable
@@ -226,6 +228,7 @@ class VotingSystem(ABC):
             if cand_win.name == cand_condorcet_loser.name:
                 #print(pref_schedule)
                 return True
+        return False
 
     def find_condorcet_loser_vios(self, num_trials, distribution, weights = None):
         for i in range(0, num_trials):
@@ -239,7 +242,7 @@ class VotingSystem(ABC):
 
             vio_cond_loser = self.violates_condorcet_loser(pref_schedule)
             if(vio_cond_loser):
-                print(pref_schedule)
+                #print(pref_schedule)
                 self.clc_vio += 1
 
 
@@ -256,7 +259,9 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-            self.IIA(pref_schedule)
+            ivio = self.violates_IIA(pref_schedule)
+            if(ivio):
+                self.IIAv += 1
 
     # exact same as in plurality
     def simple_set(self,pref_schedule, poss_order):
@@ -294,12 +299,12 @@ class VotingSystem(ABC):
                     self.majority_vio += 1
 
 
-
+    # this can be solely in the python model, that is fine
 
     # implements the IIA algorithm described in the paper found at link below
     # https://www.sciencedirect.com/science/article/pii/S0176268020300847
-    def IIA_paper(self, pref_schedule):
-        violated = False
+    def violates_IIA_paper(self, pref_schedule):
+        IIA_violated = False
         for comp in self.comparisons:
             winner = 0
             map_cand = self.create_societal_rank(pref_schedule, self.cand_objects, self.possible_orders)
@@ -323,66 +328,67 @@ class VotingSystem(ABC):
             poss_pref1 = self.move_up(self.possible_orders, cand_name, 1, one, two)
             vio1 = self.check_vio(pref_schedule, winner, one, two, poss_pref1)
             if(vio1 == True):
-                violated = True
+                IIA_violated = True
                 break
 
             poss_pref2 = self.move_up(self.possible_orders, cand_name, 2, one, two)
             vio2 = self.check_vio(pref_schedule, winner, one, two, poss_pref2)
             if (vio2 == True):
-                violated = True
+                IIA_violated = True
                 break
 
             poss_pref3 = self.move_down(self.possible_orders, cand_name, 1, one, two)
             vio3 = self.check_vio(pref_schedule, winner, one, two, poss_pref3)
             if (vio3 == True):
-                violated = True
+                IIA_violated = True
                 break
 
             poss_pref4 = self.move_down(self.possible_orders, cand_name, 2, one, two)
             vio4 = self.check_vio(pref_schedule, winner, one, two, poss_pref4)
             if (vio4 == True):
-                violated = True
+                IIA_violated = True
                 break
 
             # moving the pair being compared up and down 1 spot, first one then two
             poss_pref5 = self.move_up(self.possible_orders, one.name, 1, one, two)
             vio5 = self.check_vio(pref_schedule, winner, one, two, poss_pref5)
             if (vio5 == True):
-                violated = True
+                IIA_violated = True
                 break
 
             poss_pref6 = self.move_down(self.possible_orders, one.name, 1, one, two)
             vio6 = self.check_vio(pref_schedule, winner, one, two, poss_pref6)
             if (vio6 == True):
-                violated = True
+                IIA_violated = True
                 break
 
             poss_pref7 = self.move_up(self.possible_orders, two.name, 1, one, two)
             vio7 = self.check_vio(pref_schedule, winner, one, two, poss_pref7)
             if (vio7 == True):
-                violated = True
+                IIA_violated = True
                 break
 
             poss_pref8 = self.move_down(self.possible_orders, two.name, 1, one, two)
             vio8 = self.check_vio(pref_schedule, winner, one, two, poss_pref8)
             if (vio8 == True):
-                violated = True
+                IIA_violated = True
                 break
 
             # carrying out the simultaneous moves in two separate passes as described in the paper
             poss_pref9 = self.sim_move_1(winner, one, two)
             vio9 = self.check_vio(pref_schedule, winner, one, two, poss_pref9)
             if (vio9 == True):
-                violated = True
+                IIA_violated = True
                 break
 
             poss_pref10 = self.sim_move_2(winner, one, two)
             vio10 = self.check_vio(pref_schedule, winner, one, two, poss_pref10)
             if (vio10 == True):
-                violated = True
+                IIA_violated = True
                 break
 
         # good test to see which pref_schedules do not violate IIA
+        return IIA_violated
         #if(violated==False):
          #  print(pref_schedule)
 
@@ -488,13 +494,10 @@ class VotingSystem(ABC):
         new_map = self.create_societal_rank(pref_sc, self.cand_objects,poss_pref)
         # for instance if the winner was one but now one is ranked equally or lower than two
         if winner == 1 and (one.rank >= two.rank):
-            self.IIAv += 1
             return True
         elif winner == 2 and (one.rank <= two.rank):
-            self.IIAv += 1
             return True
         elif winner == 0 and (one.rank != two.rank):
-            self.IIAv += 1
             return True
         return False
 
@@ -548,11 +551,15 @@ class VotingSystem(ABC):
 
 
 
+
+
+
+
     # this is another algorithm to compute IIA violation for a given preference schedule
     # it generates 100 preference schedules where all the voters have the same relative ranking of a certain pair
     # if the societal ranking of the pair changes then there exists an IIA violation
     # can increase 100 to greater value if I want to catch more violations
-    def IIA(self, pref_schedule):
+    def violates_IIA(self, pref_schedule):
         for comp in self.comparisons:
             winner = 0
             map_cand = self.create_societal_rank(pref_schedule, self.cand_objects, self.possible_orders)
@@ -565,7 +572,7 @@ class VotingSystem(ABC):
 
             self.compare(comp,pref_schedule, self.possible_orders)
             # we use these local values since we call compare again and Condorcet winner changes
-            # compare is called again in create societal rank function
+            # compare is called again in create societal rank function (I think specifically for Copeland?)
             one_c = one.condorcet_points
             two_c = two.condorcet_points
 
@@ -576,16 +583,15 @@ class VotingSystem(ABC):
                 new_map = self.create_societal_rank(new_pref, self.cand_objects, self.possible_orders)
                 # checks if the relative rank changed
                 if winner == 1 and (one.rank>=two.rank):
-                    self.IIAv += 1
-                    return
+                    return True
                 elif winner == 2 and (one.rank<=two.rank):
-                    self.IIAv += 1
-                    return
+                    return True
                 elif winner == 0 and (one.rank != two.rank):
-                    self.IIAv += 1
-                    return
+                    return True
+
         # good testing statement to see which pref_sc do not violate or 'slipped through'
         #print(pref_schedule)
+        return False
 
 
 
@@ -1413,25 +1419,30 @@ def main():
     list_of_cand_objects.remove(c4)
 
 
-    bordel = BordaCount(100,3,list_of_cand_objects)
-    bordel.find_condorcet_loser_vios(10000, "IAC")
-    print(bordel.clc_vio)
-    bordel.find_unanimity_vios(10000,"IC")
-    print(bordel.unam_vios)
+    bordel = BordaCount(3,3,list_of_cand_objects)
+    #bordel.find_condorcet_loser_vios(10000, "IAC")
+    #print(bordel.clc_vio)
+    #bordel.find_unanimity_vios(10000,"IC")
+    #print(bordel.unam_vios)
+    bordel.find_IIA_violations(10000,"IC")
+    print(bordel.IIAv)
 
-    election1 = Plurality(5,3,list_of_cand_objects)
+    print("Next")
+
+    election1 = Plurality(30,3,list_of_cand_objects)
     election1.find_condorcet_vios(10000,"IC")
-    print(election1.cwc_vio)
+    #print(election1.cwc_vio)
     election1.find_condorcet_loser_vios(10000,"IC")
     print(election1.clc_vio)
+
 
 
     print("Next election")
     rcv = InstantRunoff(100,3,list_of_cand_objects)
     rcv.find_condorcet_vios(10000,"IC")
-    print(rcv.cwc_vio)
+    #print(rcv.cwc_vio)
     rcv.find_condorcet_loser_vios(10000, "IAC")
-    print(rcv.clc_vio)
+    #print(rcv.clc_vio)
 
     #election1.find_transitivity_vios(10000,"IC")
     #print(election1.transitivity_vio/10000)
