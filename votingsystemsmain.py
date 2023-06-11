@@ -1210,14 +1210,13 @@ class PairwiseComparison(VotingSystem):
             cand.num_votes = 0
 
         for comp in self.comparisons:
-            cand_win_name = self.compare(comp, pref_schedule, poss_order)
-            if cand_win_name is None:
+            cand_win = self.compare(comp, pref_schedule, poss_order)
+            if cand_win is None:
                 for name in comp:
                     cand = self.find_which_candidate_w_name(name)
                     cand.num_votes += 0.5
             else:
-                cand_win_head_to_head = self.find_which_candidate_w_name(cand_win_name)
-                cand_win_head_to_head.num_votes += 1
+                cand_win.num_votes += 1
 
     def create_societal_rank(self,pref_schedule,cand_obj, poss_order):
             self.set_votes(pref_schedule, poss_order)
@@ -1458,7 +1457,24 @@ def obtain_combos(unique_perms):
 
 
 
+def main2():
+    list_of_cand_objects = []
+    c1 = Candidate('A')
+    c2 = Candidate('B')
+    c3 = Candidate('C')
+    c4 = Candidate('D')
 
+    list_of_cand_objects.append(c1)
+    list_of_cand_objects.append(c2)
+    list_of_cand_objects.append(c3)
+    #list_of_cand_objects.append(c4)
+
+
+    pc = PairwiseComparison(10,3,list_of_cand_objects)
+    pc.find_majority_violations(10000,"IAC")
+    print(pc.majority_vio)
+    pc.find_unanimity_vios(10000,"IAC")
+    print(pc.unam_vios)
 
 
 def main():
@@ -1483,6 +1499,11 @@ def main():
     #c.determine_winner([10,1,2,3,0,0,20,0,0,0,5,1,0,0,2,3,1,2,5,6,9,0,0,0], c.cand_objects, c.possible_orders)
 
     list_of_cand_objects.remove(c4)
+
+    pc = PairwiseComparison(10, 3, list_of_cand_objects)
+    pc.find_majority_violations(1, "IC")
+    print(pc.majority_vio)
+
 
 
     bordel = BordaCount(3,3,list_of_cand_objects)
@@ -1607,7 +1628,7 @@ def main():
 
 if __name__ == '__main__':
     start = time.time()
-    main()
+    main2()
     end = time.time()
     print(str(end - start) + "(s)")
 
