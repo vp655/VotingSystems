@@ -28,6 +28,9 @@ class Candidate:
         # for instant runoff
         self.round_elim = 0
 
+        # for Coombs
+        self.round_win = 0
+
         self.condorcet_losses = 0
         self.last_place_votes = 0
 
@@ -240,6 +243,7 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
+            print(pref_schedule)
             vio_cond_loser = self.violates_condorcet_loser(pref_schedule)
             if(vio_cond_loser):
                 #print(pref_schedule)
@@ -1069,6 +1073,41 @@ class Coombs(VotingSystem):
             self.elec_round += 1
             self.run_election(pref_schedule,cand_obj, poss_order)
 
+
+    def run_election_majority(self,pref_schedule, cand_obj, cand_win, poss_order, poss_order_win):
+
+        if(len(cand_win)==0):
+            return
+        else:
+            if(len(cand_obj)==0):
+                for cand in cand_obj:
+                    cand.round_win = self.elec_round
+                return
+
+            self.set_votes(pref_schedule, poss_order)
+            cands_to_elim = self.find_candidates_with_highest_last(cand_obj)
+            self.simple_set(pref_schedule,poss_order)
+            cand_w_fifty_or_more = []
+            for cand in cand_obj:
+                if cand.num_votes >= self.num_voters/2:
+                    cand_w_fifty_or_more.append(cand)
+            if len(cand_w_fifty_or_more) != 0:
+                for cand in cand_w_fifty_or_more:
+                    cand.round_win = self.elec_round
+                    poss_order_win = self.eliminate_cands(poss_order_win, cand.name)
+                    cand_win.remove(cand)
+                self.elec_round += 1
+                cand_obj = cand_win[:]
+                poss_order = poss_order_win[:]
+                self.run_election_majority(pref_schedule, cand_obj,cand_win,poss_order,poss_order_win)
+
+            else:
+                for cand in cands_to_elim:
+                    poss_order = self.eliminate_cands(poss_order, cand.name)
+                    cand_obj.remove(cand)
+                self.run_election_majority(pref_schedule, cand_obj, cand_win, poss_order, poss_order_win)
+
+
     def find_candidates_with_highest_last(self, cand_obj):
         cands_with_most_last = []
         cand_with_max = max(cand_obj, key=lambda v: v.last_place_votes)
@@ -1100,6 +1139,33 @@ class Coombs(VotingSystem):
             cand.rank = count
 
         return map_of_cands
+
+    def create_societal_rank_aliter(self, pref_schedule, cand_obj, poss_order):
+        cand_process = cand_obj[:]
+        self.run_election_majority(pref_schedule, cand_process, cand_process[:], poss_order, poss_order[:])
+        # the two [:] arguments unnecessary if doing other method
+        sorted_list = sorted(cand_obj, key=lambda v: v.round_win)
+        # sorted_list = sorted(cand_obj, key=lambda v: v.round_elim, reverse = True)
+        map_of_cands = {}
+        # emulates do while
+        count = 0
+        previous = sorted_list[0].round_elim
+        map_of_cands[count] = []
+        # end of first iteration
+        for cand in sorted_list:
+            if (cand.round_elim == previous):
+                map_of_cands[count].append(cand)
+            else:
+                count += 1
+                map_of_cands[count] = []
+                map_of_cands[count].append(cand)
+            previous = cand.round_elim
+            cand.rank = count
+
+        return map_of_cands
+
+
+
 
 
 
@@ -1424,25 +1490,33 @@ def main():
     #print(bordel.clc_vio)
     #bordel.find_unanimity_vios(10000,"IC")
     #print(bordel.unam_vios)
-    bordel.find_IIA_violations(10000,"IC")
-    print(bordel.IIAv)
+    #bordel.find_IIA_violations(10000,"IC")
+    #print(bordel.IIAv)
 
     print("Next")
 
     election1 = Plurality(30,3,list_of_cand_objects)
-    election1.find_condorcet_vios(10000,"IC")
+    #election1.find_condorcet_vios(10000,"IC")
     #print(election1.cwc_vio)
-    election1.find_condorcet_loser_vios(10000,"IC")
-    print(election1.clc_vio)
+    #election1.find_condorcet_loser_vios(10000,"IC")
+    #print(election1.clc_vio)
 
 
 
     print("Next election")
-    rcv = InstantRunoff(100,3,list_of_cand_objects)
-    rcv.find_condorcet_vios(10000,"IC")
+    rcv = InstantRunoff(10,3,list_of_cand_objects)
+    #rcv.find_condorcet_vios(10000,"IC")
     #print(rcv.cwc_vio)
     rcv.find_condorcet_loser_vios(10000, "IAC")
-    #print(rcv.clc_vio)
+    print(rcv.clc_vio)
+
+
+
+    ccc = Coombs(21,3,list_of_cand_objects)
+    w = ccc.determine_winner([5,1,3,2,7,3],ccc.cand_objects, ccc.possible_orders)
+    l = ccc.determine_winner([3, 3, 4, 2, 4, 5],ccc.cand_objects, ccc.possible_orders)
+    ccc.find_condorcet_loser_vios(10000,"IC")
+    print(ccc.clc_vio)
 
     #election1.find_transitivity_vios(10000,"IC")
     #print(election1.transitivity_vio/10000)
