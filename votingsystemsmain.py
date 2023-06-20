@@ -243,7 +243,7 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-            print(pref_schedule)
+            #print(pref_schedule)
             vio_cond_loser = self.violates_condorcet_loser(pref_schedule)
             if(vio_cond_loser):
                 #print(pref_schedule)
@@ -1343,10 +1343,32 @@ class Dowdall(VotingSystem):
 
 
 
+class Dictatorship(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+
+
+    def set_votes(self, pref_schedule, poss_order):
+        voter_dict = rand.randint(1,self.num_voters)
+
+
+
+
+
+
+
+
+
+
+
 class Black(VotingSystem):
     pass
 
 # this one is if there is condorcet, elect, otherwise use Borda - seems promising to reduce CWC_vio - check IIA
+# however, it does not exactly produce a ranking - can make arbitrary ranking by your definition
+# maybe Condorcet is 1st if exists - then rank rest by Borda after using eliminate cand
+# if Condorcet is not there - completely rank by Borda
 
 class TopTwo(VotingSystem):
 
@@ -1470,11 +1492,15 @@ def main2():
     #list_of_cand_objects.append(c4)
 
 
-    pc = PairwiseComparison(10,3,list_of_cand_objects)
+    pc = Dowdall(10,3,list_of_cand_objects)
     pc.find_majority_violations(10000,"IAC")
     print(pc.majority_vio)
     pc.find_unanimity_vios(10000,"IAC")
     print(pc.unam_vios)
+    pc.find_condorcet_vios(10000,"IAC")
+    print(pc.cwc_vio)
+    pc.find_condorcet_loser_vios(10000, "IAC")
+    print(pc.clc_vio)
 
 
 def main():
