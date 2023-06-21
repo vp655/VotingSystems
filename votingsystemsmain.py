@@ -1353,6 +1353,31 @@ class Dictatorship(VotingSystem):
         voter_dict = rand.randint(1,self.num_voters)
 
 
+class ImposedRule(VotingSystem):
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+        self.winner = rand.choice(self.cand_objects)  # the winner is decided before the election takes place
+
+    def set_votes(self, pref_schedule, poss_order):
+        print("No election")
+
+    def create_societal_rank(self,pref_schedule, cand_obj, poss_order):
+        for cand in cand_obj:
+            if cand == self.winner:
+                cand.rank = 0
+            else:
+                cand.rank = 1
+
+    def determine_winner(self, pref_schedule, cand_obj, poss_order):
+        self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        return self.winner
+
+    def type(self):
+        return "Imposed Rule"
+
+
+
+
 
 
 
@@ -1380,13 +1405,10 @@ class TopTwo(VotingSystem):
         print("I could use compare function")
 
 
-class Dictatorship(VotingSystem):
-    pass
 
 # randomly select dictator?
 
-class ImposedRule(VotingSystem):
-    pass
+
 
 # randomly select winning candidate? - but it has to be fixed throughout
 
@@ -1492,6 +1514,13 @@ def main2():
     #list_of_cand_objects.append(c4)
 
 
+    what = ImposedRule(10,3,list_of_cand_objects)
+    what.find_condorcet_loser_vios(10000,"IC")
+    print(what.clc_vio)
+    #what.find_IIA_violations(10000, "IC")
+    #print(what.IIAv)
+
+    """
     pc = Dowdall(10,3,list_of_cand_objects)
     pc.find_majority_violations(10000,"IAC")
     print(pc.majority_vio)
@@ -1501,6 +1530,7 @@ def main2():
     print(pc.cwc_vio)
     pc.find_condorcet_loser_vios(10000, "IAC")
     print(pc.clc_vio)
+    """
 
 
 def main():
