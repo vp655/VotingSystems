@@ -196,7 +196,8 @@ class VotingSystem(ABC):
         # if there is a Condorcet candidate
         if cand_condorcet is not None:
             # and no candidate wins
-            if cand_win is None:
+            if cand_win is None:  # can potentially have no winner if we return None in case of ties
+                # instead of randomly breaking the tie
                 return True
             elif cand_win.name != cand_condorcet.name:
                 return True
@@ -225,6 +226,11 @@ class VotingSystem(ABC):
     def violates_condorcet_loser(self, pref_schedule):
         cand_win = self.determine_winner(pref_schedule, self.cand_objects, self.possible_orders)
         cand_condorcet_loser = self.find_Condorcet_loser(pref_schedule)
+
+        # if there is no winner, it is impossible for the Condorcet loser to be elected
+        if cand_win is None:
+            return False
+
 
         # compares the winner and the condorcet winner (using derived class implementation)
         # if there is a Condorcet candidate
@@ -1617,6 +1623,12 @@ class TopTwo(VotingSystem):
             return map_of_cands
 
         # second round starts here
+
+        # Note that if there is anyone in the Top Two, they are ranked above the rest of the candidates
+        # we do not re-evaluate points relative to others
+        # top two in separate category (even in case that 2 and 3 tie)
+        # possibly few more IIA violations in my method
+        # but it is more consistent than paper with how elections run in real world (think Warnock and Walker)
 
         else:
             r2_map_of_cands = {}
