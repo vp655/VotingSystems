@@ -799,6 +799,7 @@ class VotingSystem(ABC):
 
 
 # start of derived classes (each one represents a voting system)
+# can make these in a different file - especially in C++ (each with its own header file and cpp file)
 
 
 
@@ -1143,38 +1144,50 @@ class Coombs(VotingSystem):
             self.elec_round += 1
             self.run_election(pref_schedule,cand_obj, poss_order)
 
-
+    # this is my custom function to determine the ordering of Coombs with majority
+    # winner need a majority to win a round and candidates are eliminates until majority winner(s) are reached
+    # there can be multiple in case of 50/50 split
+    # then we eliminate that candidate since they already won and we go again with the rest
+    # if at any time cand_obj is empty it means multiple were deleted at once - return
     def run_election_majority(self,pref_schedule, cand_obj, cand_win, poss_order, poss_order_win):
-
+        # if all objects from cand_win are removed - each allocated majority
         if(len(cand_win)==0):
             return
         else:
+            # if everyone is deleted then we need to exit this run
             if(len(cand_obj)==0):
-                for cand in cand_obj:
-                    cand.round_win = self.elec_round
                 return
 
-            self.set_votes(pref_schedule, poss_order)
+            self.set_votes(pref_schedule, poss_order)  # last place votes
+            # includes all cands who have most last place votes
             cands_to_elim = self.find_candidates_with_highest_last(cand_obj)
             self.simple_set(pref_schedule,poss_order)
             cand_w_fifty_or_more = []
             for cand in cand_obj:
                 if cand.num_votes >= self.num_voters/2:
                     cand_w_fifty_or_more.append(cand)
+            # if there are candidate(s) with at least 50% of the vote they win in that round
             if len(cand_w_fifty_or_more) != 0:
                 for cand in cand_w_fifty_or_more:
                     cand.round_win = self.elec_round
                     poss_order_win = self.eliminate_cands(poss_order_win, cand.name)
                     cand_win.remove(cand)
-                self.elec_round += 1
+                self.elec_round += 1  # round goes to the next one
+                # if there is a majority candidate, reset cand_obj and poss_order and go to next round
                 cand_obj = cand_win[:]
                 poss_order = poss_order_win[:]
+                # recursively calls run_election
                 self.run_election_majority(pref_schedule, cand_obj,cand_win,poss_order,poss_order_win)
 
             else:
                 for cand in cands_to_elim:
                     poss_order = self.eliminate_cands(poss_order, cand.name)
                     cand_obj.remove(cand)
+                # if every single candidate is to be eliminated then we assign each one this round
+                # this is the round they were elected winner - exit the election since not possible to proceed
+                if(len(cand_obj)==0):
+                    for cand in cands_to_elim:
+                        cand.round_win = self.elec_round
                 self.run_election_majority(pref_schedule, cand_obj, cand_win, poss_order, poss_order_win)
 
 
@@ -1219,17 +1232,17 @@ class Coombs(VotingSystem):
         map_of_cands = {}
         # emulates do while
         count = 0
-        previous = sorted_list[0].round_elim
+        previous = sorted_list[0].round_win
         map_of_cands[count] = []
         # end of first iteration
         for cand in sorted_list:
-            if (cand.round_elim == previous):
+            if (cand.round_win == previous):
                 map_of_cands[count].append(cand)
             else:
                 count += 1
                 map_of_cands[count] = []
                 map_of_cands[count].append(cand)
-            previous = cand.round_elim
+            previous = cand.round_win
             cand.rank = count
 
         return map_of_cands
@@ -1869,17 +1882,12 @@ def main():
     list_of_cand_objects.append(c1)
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
-    list_of_cand_objects.append(c4)
+    #list_of_cand_objects.append(c4)
 
-    b=BordaCount(40,4,list_of_cand_objects)
+    b=Coombs(11,3,list_of_cand_objects)
+    b.determine_winner([2,2,2,2,2,2],b.cand_objects,b.possible_orders)
     b.find_condorcet_vios(10000,"IC")
-
-
-    tb = TruncatedBorda(40,4,list_of_cand_objects,4)  # the less info we take the most condorcet vios
-    tb.find_condorcet_vios(10000,"IC")
-
     print(b.cwc_vio)
-    print(tb.cwc_vio)
 
 
 
