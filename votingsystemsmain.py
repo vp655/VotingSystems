@@ -207,6 +207,7 @@ class VotingSystem(ABC):
     # function generates random preference schedules in accordance to distribution then finds all condorcet violations
     # appends the member variable
     def find_condorcet_vios(self, num_trials, distribution, weights = None):
+        self.cwc_vio = 0 # to have multiple runs
         for i in range(0, num_trials):
             pref_schedule = []
             if distribution == "IC":
@@ -878,6 +879,7 @@ class BordaCount(VotingSystem):
         count = 0
         for val in pref_schedule:
             ordering = poss_order[count]
+            # this could cause error is poss_order has eliminated cands (made change in other systems)
             for i in range(0, self.num_cands):
                 if (i == 0):
                     cand = self.find_which_candidate_w_name(ordering[0])
@@ -931,7 +933,71 @@ class BordaCount(VotingSystem):
 
 
 class TruncatedBorda(VotingSystem):
-    pass
+
+    def __init__(self, num_voters, num_cands, cand_objects, num_rank):
+        super().__init__(num_voters, num_cands, cand_objects)
+        self.num_rank = num_rank
+
+
+    def set_votes(self,pref_schedule, poss_order):
+        for cand in self.cand_objects:
+            cand.points = 0
+            cand.num_votes = 0
+
+        count = 0
+        for val in pref_schedule:
+            ordering = poss_order[count]
+            for i in range(0,self.num_rank):
+                if (i == 0):
+                    cand = self.find_which_candidate_w_name(ordering[0])
+                    cand.num_votes += val
+                # for consistency
+                cand = self.find_which_candidate_w_name(ordering[i])
+                cand.points += val * (self.num_rank - i)
+            count += 1
+
+
+
+
+    # this function takes in a preference schedule (list of numbers of length factorial(num_cands) and computes the winner
+    def determine_winner(self, pref_schedule,cand_obj, poss_order):
+
+        societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if (num_top == 1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
+
+    def create_societal_rank(self,pref_schedule, cand_obj, poss_order):
+        self.set_votes(pref_schedule, poss_order)
+        sorted_list = sorted(cand_obj, key=lambda v: v.points, reverse=True)
+        map_of_cands = {}
+        # emulates do while
+        count = 0
+        previous = sorted_list[0].points
+        map_of_cands[count] = []
+        # end of first iteration
+        for cand in sorted_list:
+            if (cand.points == previous):
+                map_of_cands[count].append(cand)
+            else:
+                count += 1
+                map_of_cands[count] = []
+                map_of_cands[count].append(cand)
+            previous = cand.points
+            cand.rank = count
+
+        return map_of_cands
+
+
+
+    def type(self):
+        return "Truncated Borda Count"
+
 
 
 
@@ -1803,12 +1869,17 @@ def main():
     list_of_cand_objects.append(c1)
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
-    #list_of_cand_objects.append(c4)
+    list_of_cand_objects.append(c4)
+
+    b=BordaCount(40,4,list_of_cand_objects)
+    b.find_condorcet_vios(10000,"IC")
 
 
-    b = Black(10,3,list_of_cand_objects)
-    anwy = b.determine_winner([4,4,2,2,2,2],b.cand_objects, b.possible_orders)
-    print(anwy.name)
+    tb = TruncatedBorda(40,4,list_of_cand_objects,4)  # the less info we take the most condorcet vios
+    tb.find_condorcet_vios(10000,"IC")
+
+    print(b.cwc_vio)
+    print(tb.cwc_vio)
 
 
 
