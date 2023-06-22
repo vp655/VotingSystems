@@ -1397,12 +1397,141 @@ class Black(VotingSystem):
 
 class TopTwo(VotingSystem):
 
-    def set_votes(self, pref_schedule, poss_order):
-        pass
+    def set_votes(self,pref_schedule, poss_order):
+        # setting all candidate votes to 0
+        for cand in self.cand_objects:
+            cand.num_votes = 0
+        count = 0
+        # for each value in the preference schedule
+        for val in pref_schedule:
+            # the first one is the one getting votes
+            name_of_cand_getting_votes = poss_order[count][0]
+            # using find candidate with name function here
+            cand_get_votes = self.find_which_candidate_w_name(name_of_cand_getting_votes)
+            cand_get_votes.num_votes += val
+            count += 1
+
+
+    def create_societal_rank(self,pref_schedule, cand_obj, poss_order):
+        self.set_votes(pref_schedule, poss_order)
+        sorted_list = sorted(cand_obj, key=lambda v: v.num_votes, reverse=True)
+        map_of_cands = {}
+        # emulates do while
+        count = 0
+        previous = sorted_list[0].num_votes
+        map_of_cands[count] = []
+        # end of first iteration
+        for cand in sorted_list:
+            if (cand.num_votes == previous):
+                map_of_cands[count].append(cand)
+            else:
+                count += 1
+                map_of_cands[count] = []
+                map_of_cands[count].append(cand)
+            previous = cand.num_votes
+            cand.rank = count
+
+        # if there is a majority winner the election ends here
+        if(self.find_major_cand(pref_schedule) is not None):
+            return map_of_cands
+
+        # no need to conduct the second round
+
+        else:
+            r2_map_of_cands = {}
+            top_two = []
+            index = 0
+            num_left = 2
+            while (num_left != 0):
+                if (len(map_of_cands[index]) <= num_left):
+                    for cand in map_of_cands[index]:
+                        top_two.append(cand)
+                    num_left = num_left - len(map_of_cands[index])
+                elif(len(map_of_cands[index]) > num_left):
+                    ones_to_add = rand.sample(map_of_cands[index],num_left)  # this could actually be in both places
+                    for cand in ones_to_add:
+                        top_two.append(cand)
+                    num_left = 0
+                index += 1
+            self.compare([top_two[0].name, top_two[1].name], pref_schedule, self.possible_orders)
+            top_two[0].num_votes = top_two[0].condorcet_points
+            top_two[1].num_votes = top_two[1].condorcet_points
+            if top_two[0].num_votes > top_two[1].num_votes:
+                r2_map_of_cands[0] = []
+                r2_map_of_cands[0].append(top_two[0])
+                top_two[0].rank = 0
+
+                r2_map_of_cands[1] = []
+                r2_map_of_cands[1].append(top_two[1])
+                top_two[1].rank = 1
+            elif top_two[0].num_votes < top_two[1].num_votes:
+                r2_map_of_cands[0] = []
+                r2_map_of_cands[0].append(top_two[1])
+                top_two[1].rank = 0
+
+                r2_map_of_cands[1] = []
+                r2_map_of_cands[1].append(top_two[0])
+                top_two[0].rank = 1
+            else:
+                r2_map_of_cands[0] = []
+                r2_map_of_cands[0].append(top_two[0])
+                r2_map_of_cands[0].append(top_two[1])
+                top_two[0].rank = 0
+                top_two[1].rank = 0
+            max_rank = max(top_two[0].rank, top_two[1].rank)
+
+
+            new_cand_obj = cand_obj[:]
+            new_cand_obj.remove(top_two[0])
+            new_cand_obj.remove(top_two[1])
+            sorted_list = sorted(new_cand_obj, key=lambda v: v.num_votes, reverse=True)
+
+            # emulates do while
+            count = max_rank
+            previous = -1
+            for cand in sorted_list:
+                if (cand.num_votes == previous):
+                    map_of_cands[count].append(cand)
+                else:
+                    count += 1
+                    map_of_cands[count] = []
+                    map_of_cands[count].append(cand)
+                previous = cand.num_votes
+                cand.rank = count
+
+        return r2_map_of_cands
+
+
+    def determine_winner(self, pref_schedule,cand_obj, poss_order):
+
+        societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if (num_top == 1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
+
+
+
+
+
 
     def roundtwo(self):
         print("this will just be a comparison")
         print("I could use compare function")
+
+    def type(self):
+        return "Top Two"
+
+
+
+
+
+
+
 
 
 
@@ -1514,9 +1643,12 @@ def main2():
     #list_of_cand_objects.append(c4)
 
 
-    what = ImposedRule(10,3,list_of_cand_objects)
-    what.find_condorcet_loser_vios(10000,"IC")
-    print(what.clc_vio)
+    bruh = TopTwo(11,3,list_of_cand_objects)
+    winner = bruh.determine_winner([3,2,0,2,2,2],bruh.cand_objects, bruh.possible_orders)
+
+    #what = ImposedRule(10,3,list_of_cand_objects)
+    #what.find_condorcet_loser_vios(10000,"IC")
+    #print(what.clc_vio)
     #what.find_IIA_violations(10000, "IC")
     #print(what.IIAv)
 
