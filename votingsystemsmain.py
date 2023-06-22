@@ -34,6 +34,8 @@ class Candidate:
         self.condorcet_losses = 0
         self.last_place_votes = 0
 
+        self.greatest_pairwise_defeat = 0
+
     def __eq__(self,other):
         return self.name == other.name
 
@@ -266,6 +268,8 @@ class VotingSystem(ABC):
             ivio = self.violates_IIA(pref_schedule)
             if(ivio):
                 self.IIAv += 1
+            #else:
+             #   print(pref_schedule)
 
     # exact same as in plurality
     def simple_set(self,pref_schedule, poss_order):
@@ -1388,7 +1392,100 @@ class ImposedRule(VotingSystem):
 
 
 class Black(VotingSystem):
-    pass
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+
+    # set votes used based on Borda points
+    def set_votes(self,pref_schedule, poss_order):
+        for cand in self.cand_objects:
+            cand.points = 0
+            cand.num_votes = 0
+
+        count = 0
+        for val in pref_schedule:
+            ordering = poss_order[count]
+            for i in range(0, self.num_cands):
+                if (i == 0):
+                    cand = self.find_which_candidate_w_name(ordering[0])
+                    cand.num_votes += val
+                # for consistency
+                cand = self.find_which_candidate_w_name(ordering[i])
+                cand.points += val * (self.num_cands - i)
+            count += 1
+
+
+    def create_societal_rank(self,pref_schedule, cand_obj, poss_order):
+        self.set_votes(pref_schedule, poss_order)
+        sorted_list = sorted(cand_obj, key=lambda v: v.points, reverse=True)
+        map_of_cands = {}
+        cand_condorcet = self.find_Condorcet_candidate(pref_schedule)
+        # if there is no Condorcet candidate we simply use Borda
+        if cand_condorcet is None:
+            count = 0
+            previous = sorted_list[0].points
+            map_of_cands[count] = []
+            # end of first iteration
+            for cand in sorted_list:
+                if (cand.points == previous):
+                    map_of_cands[count].append(cand)
+                else:
+                    count += 1
+                    map_of_cands[count] = []
+                    map_of_cands[count].append(cand)
+                previous = cand.points
+                cand.rank = count
+
+
+        elif cand_condorcet is not None:
+            map_of_cands[0] = []
+            map_of_cands[0].append(cand_condorcet)
+            cand_condorcet.rank = 0
+            sorted_list.remove(cand_condorcet)
+            count = 1
+            previous = sorted_list[0].points  # sorted list does not include the condorcet candidate
+            map_of_cands[count] = []
+            # end of first iteration
+            for cand in sorted_list:
+                if (cand.points == previous):
+                    map_of_cands[count].append(cand)
+                else:
+                    count += 1
+                    map_of_cands[count] = []
+                    map_of_cands[count].append(cand)
+                previous = cand.points
+                cand.rank = count
+
+        return map_of_cands
+
+
+
+    def determine_winner(self, pref_schedule,cand_obj, poss_order):
+
+        societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if (num_top == 1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
+
+
+
+
+    def type(self):
+        return "Black"
+
+
+
+
+
+
+
+
+
 
 # this one is if there is condorcet, elect, otherwise use Borda - seems promising to reduce CWC_vio - check IIA
 # however, it does not exactly produce a ranking - can make arbitrary ranking by your definition
@@ -1396,6 +1493,9 @@ class Black(VotingSystem):
 # if Condorcet is not there - completely rank by Borda
 
 class TopTwo(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
 
     def set_votes(self,pref_schedule, poss_order):
         # setting all candidate votes to 0
@@ -1410,6 +1510,8 @@ class TopTwo(VotingSystem):
             cand_get_votes = self.find_which_candidate_w_name(name_of_cand_getting_votes)
             cand_get_votes.num_votes += val
             count += 1
+
+    #exactly the same as plurality
 
 
     def create_societal_rank(self,pref_schedule, cand_obj, poss_order):
@@ -1431,11 +1533,11 @@ class TopTwo(VotingSystem):
             previous = cand.num_votes
             cand.rank = count
 
-        # if there is a majority winner the election ends here
+        # if there is a majority winner the election ends here; no need to conduct second round
         if(self.find_major_cand(pref_schedule) is not None):
             return map_of_cands
 
-        # no need to conduct the second round
+        # second round starts here
 
         else:
             r2_map_of_cands = {}
@@ -1486,7 +1588,6 @@ class TopTwo(VotingSystem):
             new_cand_obj.remove(top_two[1])
             sorted_list = sorted(new_cand_obj, key=lambda v: v.num_votes, reverse=True)
 
-            # emulates do while
             count = max_rank
             previous = -1
             for cand in sorted_list:
@@ -1518,13 +1619,76 @@ class TopTwo(VotingSystem):
 
 
 
-
-    def roundtwo(self):
-        print("this will just be a comparison")
-        print("I could use compare function")
-
     def type(self):
         return "Top Two"
+
+
+
+class Minimax(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+
+    def set_votes(self, pref_schedule, poss_order):
+        for cand in self.cand_objects:
+            rival_cands = self.cand_objects[:]
+            rival_cands.remove(cand)
+            pairwise_defeats = []
+            for rival in rival_cands:
+                self.compare([cand.name,rival.name],pref_schedule,poss_order) # resets condorcet each time
+                loss = rival.condorcet_points - cand.condorcet_points
+                if(loss > 0):
+                    pairwise_defeats.append(loss)
+                else:
+                    pairwise_defeats.append(0)
+            cand.greatest_pairwise_defeat = max(pairwise_defeats)
+
+    def create_societal_rank(self,pref_schedule, cand_obj, poss_order):
+        self.set_votes(pref_schedule, poss_order)
+        sorted_list = sorted(cand_obj,key=lambda v: v.greatest_pairwise_defeat)
+        map_of_cands = {}
+        #emulates do while
+        count = 0
+        previous = sorted_list[0].greatest_pairwise_defeat
+        map_of_cands[count] = []
+        #end of first iteration
+        for cand in sorted_list:
+            if(cand.greatest_pairwise_defeat == previous):
+                map_of_cands[count].append(cand)
+            else:
+                count += 1
+                map_of_cands[count] = []
+                map_of_cands[count].append(cand)
+            previous = cand.greatest_pairwise_defeat
+            cand.rank = count
+
+
+
+        return map_of_cands
+
+    def determine_winner(self, pref_schedule, cand_obj, poss_order):
+
+        societal_order = self.create_societal_rank(pref_schedule,cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if(num_top==1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
+
+
+    def type(self):
+        return "Minimax"
+
+
+
+
+
+
+
+
 
 
 
@@ -1626,197 +1790,35 @@ def obtain_combos(unique_perms):
 
 
 
-
-
-
-
-def main2():
+def main():
     list_of_cand_objects = []
+    # similar to C++, these could be created in the constructor
+
     c1 = Candidate('A')
     c2 = Candidate('B')
     c3 = Candidate('C')
     c4 = Candidate('D')
 
+    #list_of_cand_objects.append(Candidate('A'))
     list_of_cand_objects.append(c1)
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
     #list_of_cand_objects.append(c4)
 
 
-    bruh = TopTwo(11,3,list_of_cand_objects)
-    winner = bruh.determine_winner([3,2,0,2,2,2],bruh.cand_objects, bruh.possible_orders)
-
-    #what = ImposedRule(10,3,list_of_cand_objects)
-    #what.find_condorcet_loser_vios(10000,"IC")
-    #print(what.clc_vio)
-    #what.find_IIA_violations(10000, "IC")
-    #print(what.IIAv)
-
-    """
-    pc = Dowdall(10,3,list_of_cand_objects)
-    pc.find_majority_violations(10000,"IAC")
-    print(pc.majority_vio)
-    pc.find_unanimity_vios(10000,"IAC")
-    print(pc.unam_vios)
-    pc.find_condorcet_vios(10000,"IAC")
-    print(pc.cwc_vio)
-    pc.find_condorcet_loser_vios(10000, "IAC")
-    print(pc.clc_vio)
-    """
-
-
-def main():
-    list_of_cand_objects = []
-    c1 = Candidate('A')
-    c2 = Candidate('B')
-    c3 = Candidate('C')
-    c4 = Candidate('D')
-
-    list_of_cand_objects.append(c1)
-    list_of_cand_objects.append(c2)
-    list_of_cand_objects.append(c3)
-    list_of_cand_objects.append(c4)
-
-    #b = BordaCount(30,3,list_of_cand_objects)
-    #b.find_transitivity_vios(10000,"IC")
-    #print(b.transitivity_vio/10000)
-    #b.find_majority_violations(10000,"IC")
-    #print(b.majority_vio)
-
-    #c = Coombs(70,4,list_of_cand_objects)
-    #c.determine_winner([10,1,2,3,0,0,20,0,0,0,5,1,0,0,2,3,1,2,5,6,9,0,0,0], c.cand_objects, c.possible_orders)
-
-    list_of_cand_objects.remove(c4)
-
-    pc = PairwiseComparison(10, 3, list_of_cand_objects)
-    pc.find_majority_violations(1, "IC")
-    print(pc.majority_vio)
+    b = Black(10,3,list_of_cand_objects)
+    anwy = b.determine_winner([4,4,2,2,2,2],b.cand_objects, b.possible_orders)
+    print(anwy.name)
 
 
 
-    bordel = BordaCount(3,3,list_of_cand_objects)
-    #bordel.find_condorcet_loser_vios(10000, "IAC")
-    #print(bordel.clc_vio)
-    #bordel.find_unanimity_vios(10000,"IC")
-    #print(bordel.unam_vios)
-    #bordel.find_IIA_violations(10000,"IC")
-    #print(bordel.IIAv)
-
-    print("Next")
-
-    election1 = Plurality(30,3,list_of_cand_objects)
-    #election1.find_condorcet_vios(10000,"IC")
-    #print(election1.cwc_vio)
-    #election1.find_condorcet_loser_vios(10000,"IC")
-    #print(election1.clc_vio)
-
-
-
-    print("Next election")
-    rcv = InstantRunoff(10,3,list_of_cand_objects)
-    #rcv.find_condorcet_vios(10000,"IC")
-    #print(rcv.cwc_vio)
-    rcv.find_condorcet_loser_vios(10000, "IAC")
-    print(rcv.clc_vio)
-
-
-
-    ccc = Coombs(21,3,list_of_cand_objects)
-    w = ccc.determine_winner([5,1,3,2,7,3],ccc.cand_objects, ccc.possible_orders)
-    l = ccc.determine_winner([3, 3, 4, 2, 4, 5],ccc.cand_objects, ccc.possible_orders)
-    ccc.find_condorcet_loser_vios(10000,"IC")
-    print(ccc.clc_vio)
-
-    #election1.find_transitivity_vios(10000,"IC")
-    #print(election1.transitivity_vio/10000)
-    #election1.violates_unanimity([5,0,0,0,0,0])
-    #boole = election1.violates_unanimity([0,0,0,0,1,2])
-    #print(boole)
-    #election1.find_unanimity_vios(10000, "IAC")
-    #print(election1.unam_vios)
-
-    """
-
-    #election = BordaCount(10,3,list_of_cand_objects)
-    #election.create_societal_rank([1,2,3,4,5,6],election.cand_objects, election.possible_orders)
-    #for i in range(0,10000):
-     #   a = election.generate_pref_srr_v2(c1,c2,8,13)
-
-    print("Instant Runoff Election")
-    rcv = InstantRunoff(1000, 3, list_of_cand_objects)
-    rcv.find_condorcet_vios(10000, "IC")
-    print(rcv.cwc_vio)
-
-    print("Election 2")
-    election2 = BordaCount(4, 3, list_of_cand_objects)
-    #election2.find_IIA_violations(10000,"IC")   # test with IAC next
-    # print(election2.cwc_vio)
-    print(election2.IIAv)
-
-    
-    print("Election 1")
-    election = Plurality(1000, 3, list_of_cand_objects)
-    #election.find_IIA_violations(100000,"IC")
-    election.find_condorcet_vios(10000,"IC")
-    print(election.cwc_vio)
-    #print(election.IIAv)
-
-
-
-
-
-    
-
-
-
-    
-
-
-
-
-    
-    print("Election 3")
-    pc = PairwiseComparison(4,3,list_of_cand_objects)
-    
-    #unique = generate_unique_permutation(3,6)
-    #real_unique = obtain_combos((unique))
-    #for i in real_unique:
-    #    pc.IIA(i)
-    #print(pc.IIAv)
-    #pc.IIAv = 0
-    
-    
-    pc.find_IIA_violations(10000,"IC")
-    #print(pc.cwc_vio)
-    print(pc.IIAv)
-
-
-    print("Election 4")
-    election4 = Dowdall(4, 3, list_of_cand_objects)
-    election4.find_IIA_violations(10000,"IC")
-    print(election4.IIAv)
-
-    
-
-    print("Instant Runoff")
-    is_elec = InstantRunoff(10, 3, list_of_cand_objects)
-    winner = is_elec.determine_winner([4, 0, 3, 0, 0, 3], is_elec.cand_objects, is_elec.possible_orders)
-    print(winner.name)
-
-    print("US Election")
-    us_election = Plurality(1000, 3, list_of_cand_objects)
-    us_election.find_condorcet_vios(10000, "Custom", [0.015, 0.48, 0.015, 0.47, 0.011, 0.009])
-    us_election.find_IIA_violations(100, "IC")
-    print(us_election.cwc_vio)
-    print(us_election.IIAv)
-    """
 
 
 
 
 if __name__ == '__main__':
     start = time.time()
-    main2()
+    main()
     end = time.time()
     print(str(end - start) + "(s)")
 
