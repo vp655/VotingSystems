@@ -1356,6 +1356,7 @@ class PairwiseMajority(VotingSystem):
     def set_votes(self, pref_schedule, poss_order):
         cond_cand = self.find_Condorcet_candidate(pref_schedule)
         return cond_cand
+    # how can I return here - is that consistent with definition
 
     def create_societal_rank(self,pref_schedule, cand_obj, poss_order):
         # this cannot create a transitive one
@@ -1440,6 +1441,10 @@ class Dictatorship(VotingSystem):
 
     def set_votes(self, pref_schedule, poss_order):
         voter_dict = rand.randint(1,self.num_voters)
+
+
+#difficult system to model given current framework
+#on each run I need to know what position the dictator is in on the preference schedule
 
 
 class ImposedRule(VotingSystem):
@@ -1896,10 +1901,18 @@ def main():
     list_of_cand_objects.append(c3)
     #list_of_cand_objects.append(c4)
 
-    b=Coombs(11,3,list_of_cand_objects)
-    b.determine_winner([2,2,2,2,2,2],b.cand_objects,b.possible_orders)
-    b.find_condorcet_vios(10000,"IC")
-    print(b.cwc_vio)
+    p = Plurality(3,3,list_of_cand_objects)
+    p.find_unanimity_vios(10000, "IAC")
+    print(p.unam_vios/100)
+
+
+    r=ImposedRule(10,3,list_of_cand_objects)
+    r.find_condorcet_vios(10000,"IC")
+    print(r.cwc_vio)
+
+    d=Dowdall(4,3,list_of_cand_objects)
+    d.find_IIA_violations(10000,"IC")
+    print(d.IIAv)
 
 
 
