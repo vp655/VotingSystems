@@ -1901,18 +1901,37 @@ def main():
     list_of_cand_objects.append(c3)
     #list_of_cand_objects.append(c4)
 
-    p = Plurality(3,3,list_of_cand_objects)
+
+    c = Coombs(3,3,list_of_cand_objects)
+    c.find_majority_violations(10000,"IC")
+    print(c.majority_vio)
+
+
+
+    """
+    p = Plurality(3, 3, list_of_cand_objects)
     p.find_unanimity_vios(10000, "IAC")
-    print(p.unam_vios/100)
+    print(p.unam_vios / 100)
 
-
-    r=ImposedRule(10,3,list_of_cand_objects)
-    r.find_condorcet_vios(10000,"IC")
+    r = ImposedRule(10, 3, list_of_cand_objects)
+    r.find_condorcet_vios(10000, "IC")
     print(r.cwc_vio)
 
-    d=Dowdall(4,3,list_of_cand_objects)
-    d.find_IIA_violations(10000,"IC")
+    print("Yep")
+    d = Dowdall(3, 3, list_of_cand_objects)
+    d.find_IIA_violations(10000, "IAC")
     print(d.IIAv)
+
+    list_of_cand_objects.append(c4)
+
+    b = BordaCount(3, 4, list_of_cand_objects)
+    b.find_majority_violations(10000, "IC")
+    print(b.majority_vio)
+    """
+
+
+
+
 
 
 
