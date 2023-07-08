@@ -68,6 +68,12 @@ class VotingSystem(ABC):
         self.unam_vios = 0
         self.transitivity_vio = 0
 
+        self.condorcet_count = 0
+
+
+
+        #self.test = []
+
     # this function sets all the candidate names from the candidate objects
     def set_candidate_names(self):
         for cand in self.cand_objects:
@@ -90,6 +96,7 @@ class VotingSystem(ABC):
                 cand_winner.condorcet_wins += 1
         for cand in self.cand_objects:
             if cand.condorcet_wins == self.num_cands - 1:
+                self.condorcet_count += 1
                 return cand
         return None
 
@@ -220,6 +227,7 @@ class VotingSystem(ABC):
 
             vio_cond = self.violates_condorcet(pref_schedule)
             if(vio_cond):
+                #print(pref_schedule)
                 self.cwc_vio += 1
 
 
@@ -255,7 +263,7 @@ class VotingSystem(ABC):
             #print(pref_schedule)
             vio_cond_loser = self.violates_condorcet_loser(pref_schedule)
             if(vio_cond_loser):
-                #print(pref_schedule)
+                #self.test.append(pref_schedule)
                 self.clc_vio += 1
 
 
@@ -1051,6 +1059,9 @@ class InstantRunoff(VotingSystem):
 
     def find_candidates_with_lowest(self, cand_obj):
         cands_with_least_votes = []
+        # this gets the candidates with the minimum votes and then take the votes of that candidate
+        # a better way to do that may be to sort them and take the 0th ones votes
+        # that may also save time
         cand_with_min = min(cand_obj, key=lambda v:v.num_votes)
         least_vote = cand_with_min.num_votes
         for cand in cand_obj:
@@ -1285,6 +1296,105 @@ class Coombs(VotingSystem):
 
 
 
+class Baldwin(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+        self.candidates_remaining = self.cand_objects[:]
+        self.current_pref_table = self.possible_orders[:]
+        self.elec_round = 1
+
+    #same rule as BordaCount
+    def set_votes(self,pref_schedule, poss_order):
+        for cand in self.cand_objects:
+            cand.points = 0
+            cand.num_votes = 0
+
+        count = 0
+        for val in pref_schedule:
+            ordering = poss_order[count]
+            # note Borda points would also change as rounds go on - check in the C++ model also
+            for i in range(0, len(poss_order[0])):
+                cand = self.find_which_candidate_w_name(ordering[i])  # find the candidate
+                cand.points += val * (len(poss_order[0]) - i)
+            count += 1
+
+
+    def run_election(self,pref_schedule, cand_obj, poss_order):
+
+        if(len(cand_obj)==0):
+            return
+        else:
+            self.set_votes(pref_schedule, poss_order)
+            cands_to_elim = self.find_candidates_with_lowest(cand_obj)
+            for cand in cands_to_elim:
+                cand.round_elim = self.elec_round
+                poss_order = self.eliminate_cands(poss_order, cand.name)
+                cand_obj.remove(cand)
+            self.elec_round += 1
+            self.run_election(pref_schedule,cand_obj, poss_order)
+
+    def find_candidates_with_lowest(self, cand_obj):
+        cands_with_least_points = []
+        # this employs the other strategy - sorting and then taking the value of the 0th element
+        sorted_cands = sorted(cand_obj, key=lambda v:v.points)
+        least_points = sorted_cands[0].points
+        for cand in cand_obj:
+            if cand.points == least_points:
+                cands_with_least_points.append(cand)
+        return cands_with_least_points
+
+
+    def create_societal_rank(self, pref_schedule, cand_obj, poss_order):
+        cand_process = cand_obj[:]
+        self.run_election(pref_schedule, cand_process, poss_order)
+        sorted_list = sorted(cand_obj, key=lambda v: v.round_elim, reverse=True)
+        map_of_cands = {}
+        # emulates do while
+        count = 0
+        previous = sorted_list[0].round_elim
+        map_of_cands[count] = []
+        # end of first iteration
+        for cand in sorted_list:
+            if (cand.round_elim == previous):
+                map_of_cands[count].append(cand)
+            else:
+                count += 1
+                map_of_cands[count] = []
+                map_of_cands[count].append(cand)
+            previous = cand.round_elim
+            cand.rank = count
+
+        return map_of_cands
+
+
+
+
+
+
+
+
+
+
+    def determine_winner(self, pref_schedule, cand_obj, poss_order):
+        cand_obj = cand_obj[:]  # I do not want to modify the actual self.cand_objects
+        societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if (num_top == 1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
+
+
+
+    def type(self):
+        return "Baldwin"
+
+
+
 
 
 # this is also called Copeland
@@ -1398,10 +1508,14 @@ class Dowdall(VotingSystem):
 
         societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
         num_top = len(societal_order[0])
+
+
         if (num_top == 1):
             return societal_order[0][0]
+
         elif num_top > 1:
             cand_win = rand.choice(societal_order[0])
+
             return cand_win
         else:
             return None
@@ -1688,15 +1802,15 @@ class TopTwo(VotingSystem):
             previous = -1
             for cand in sorted_list:
                 if (cand.num_votes == previous):
-                    map_of_cands[count].append(cand)
+                    r2_map_of_cands[count].append(cand)
                 else:
                     count += 1
-                    map_of_cands[count] = []
-                    map_of_cands[count].append(cand)
+                    r2_map_of_cands[count] = []
+                    r2_map_of_cands[count].append(cand)
                 previous = cand.num_votes
                 cand.rank = count
 
-        return r2_map_of_cands
+            return r2_map_of_cands
 
 
     def determine_winner(self, pref_schedule,cand_obj, poss_order):
@@ -1902,9 +2016,21 @@ def main():
     #list_of_cand_objects.append(c4)
 
 
-    c = Coombs(3,3,list_of_cand_objects)
-    c.find_majority_violations(10000,"IC")
-    print(c.majority_vio)
+    c = Baldwin(13,3,list_of_cand_objects)
+    c.find_condorcet_vios(10000,"IAC")
+    print(c.clc_vio)
+
+
+
+
+
+    #c.find_condorcet_vios(10000,"IC")
+    #print(c.condorcet_count)
+    #print(c.cwc_vio)
+
+    #a = c.determine_winner([0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,2 ,2 ,1 ,0, 0, 1 ,0 ,1 ,1 ,1 ,1 ,0 ,0 ,0], c.cand_objects, c.possible_orders)
+    #print(a.name)
+
 
 
 
