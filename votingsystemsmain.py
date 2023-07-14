@@ -269,6 +269,25 @@ class VotingSystem(ABC):
 
 
 
+    def find_joint_violations(self, num_trials, distribution, weights = None):
+        for i in range(0, num_trials):
+            pref_schedule = []
+            if distribution == "IC":
+                pref_schedule = generate_IC_pref(self.num_voters, self.num_cands)
+            elif distribution == "IAC":
+                pref_schedule = generate_IAC_pref(self.num_voters, self.num_cands)
+            elif distribution == "Custom":
+                pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
+
+            ivio = self.violates_IIA(pref_schedule)
+            if(ivio):
+                self.joint += 1
+                continue
+            cwc_vio = self.violates_condorcet(pref_schedule)
+            if(cwc_vio):
+                self.joint += 1
+
+
     # similar to condorcet function, but this time finds IIA violations for certain range of num_trials
     def find_IIA_violations(self, num_trials, distribution, weights = None):
         for i in range(0, num_trials):
@@ -284,7 +303,7 @@ class VotingSystem(ABC):
             if(ivio):
                 self.IIAv += 1
             #else:
-             #   print(pref_schedule)
+                #print(pref_schedule)
 
     # exact same as in plurality
     def simple_set(self,pref_schedule, poss_order):
@@ -600,7 +619,7 @@ class VotingSystem(ABC):
             two_c = two.condorcet_points
 
             # increasing this would increase percentages of violations caught at the cost of speed
-            for j in range(0,300):
+            for j in range(0,1000):
 
                 new_pref = self.generate_pref_srr_v2(one, two, one_c, two_c)  # get a new pref with same relative ranks
                 new_map = self.create_societal_rank(new_pref, self.cand_objects, self.possible_orders)
@@ -770,6 +789,7 @@ class VotingSystem(ABC):
             else:
                 vios = self.violates_transitivity_real(pref_schedule)
             if(vios):
+                #print(pref_schedule)
                 self.transitivity_vio += 1
 
 
@@ -2016,10 +2036,14 @@ def main():
     #list_of_cand_objects.append(c4)
 
 
-    c = Baldwin(13,3,list_of_cand_objects)
-    c.find_condorcet_vios(10000,"IAC")
-    print(c.clc_vio)
+    c = BordaCount(100,3,list_of_cand_objects)
+    #print(c.violates_IIA([1,1,1,1,1,5]))
+    c.find_IIA_violations(10000,"IAC")
+    print(c.IIAv)
 
+
+    #need to reset election round for RCV/Coombs/Baldwin
+    #joint one
 
 
 
