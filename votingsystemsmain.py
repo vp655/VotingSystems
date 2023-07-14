@@ -70,6 +70,8 @@ class VotingSystem(ABC):
 
         self.condorcet_count = 0
 
+        self.joint = 0
+
 
 
         #self.test = []
@@ -279,13 +281,29 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-            ivio = self.violates_IIA(pref_schedule)
-            if(ivio):
+            cwc_vio = self.violates_condorcet(pref_schedule)
+            if (cwc_vio):
                 self.joint += 1
                 continue
-            cwc_vio = self.violates_condorcet(pref_schedule)
-            if(cwc_vio):
+            ivio = self.violates_IIA(pref_schedule)
+            if (ivio):
                 self.joint += 1
+                continue
+            clc_vio = self.violates_condorcet_loser(pref_schedule)
+            if (clc_vio):
+                self.joint += 1
+                continue
+            unm_vio = self.violates_unanimity(pref_schedule)
+            if (unm_vio):
+                self.joint += 1
+                continue
+            m_vio = self.violates_majority(pref_schedule)
+            if (m_vio):
+                self.joint += 1
+                continue
+
+
+
 
 
     # similar to condorcet function, but this time finds IIA violations for certain range of num_trials
@@ -324,6 +342,16 @@ class VotingSystem(ABC):
                 return cand
         return None
 
+
+    def violates_majority(self,pref_schedule):
+        major_winner = self.find_major_cand(pref_schedule)
+        real_winner = self.determine_winner(pref_schedule, self.cand_objects, self.possible_orders)
+        if major_winner is not None:
+            if major_winner.name != real_winner.name:
+                return True
+        return False
+
+
     def find_majority_violations(self, num_trials, distribution, weights = None):
         for i in range(0, num_trials):
             pref_schedule = []
@@ -334,11 +362,13 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-            major_winner = self.find_major_cand(pref_schedule)
-            real_winner = self.determine_winner(pref_schedule,self.cand_objects, self.possible_orders)
-            if major_winner is not None:
-                if major_winner.name != real_winner.name:
-                    self.majority_vio += 1
+            vios_major = self.violates_majority(pref_schedule)
+            if(vios_major):
+                self.majority_vio += 1
+
+
+
+
 
 
     # this can be solely in the python model, that is fine
@@ -2036,10 +2066,10 @@ def main():
     #list_of_cand_objects.append(c4)
 
 
-    c = BordaCount(100,3,list_of_cand_objects)
+    c = BordaCount(3,3,list_of_cand_objects)
     #print(c.violates_IIA([1,1,1,1,1,5]))
-    c.find_IIA_violations(10000,"IAC")
-    print(c.IIAv)
+    c.find_joint_violations(10000,"IC")
+    print(c.joint)
 
 
     #need to reset election round for RCV/Coombs/Baldwin
