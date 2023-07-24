@@ -252,6 +252,26 @@ class VotingSystem(ABC):
                 return True
         return False
 
+
+    def violates_condorcet_loser_paper(self, pref_schedule):
+        cand_win = self.determine_winner(pref_schedule, self.cand_objects, self.possible_orders)
+        cand_condorcet_loser = self.find_Condorcet_loser(pref_schedule)
+
+        # if there is no winner, it is impossible for the Condorcet loser to be elected
+        if cand_win is None:
+            return False
+
+
+        # compares the winner and the condorcet winner (using derived class implementation)
+        # if there is a Condorcet candidate
+        if cand_condorcet_loser is not None:
+            if cand_condorcet_loser.num_votes == cand_win.num_votes:
+            # and no candidate wins
+            #if cand_win.name == cand_condorcet_loser.name:
+                #print(pref_schedule)
+                return True
+        return False
+
     def find_condorcet_loser_vios(self, num_trials, distribution, weights = None):
         for i in range(0, num_trials):
             pref_schedule = []
@@ -287,7 +307,7 @@ class VotingSystem(ABC):
                 continue
             ivio = self.violates_IIA(pref_schedule)
             if (ivio):
-                self.joint += 1
+                #self.joint += 1
                 continue
             clc_vio = self.violates_condorcet_loser(pref_schedule)
             if (clc_vio):
@@ -317,11 +337,12 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-            ivio = self.violates_IIA(pref_schedule)
+            ivio = self.violates_IIA_paper(pref_schedule)
             if(ivio):
                 self.IIAv += 1
             #else:
-                #print(pref_schedule)
+                #if 2 not in pref_schedule:
+                 #   print(pref_schedule)
 
     # exact same as in plurality
     def simple_set(self,pref_schedule, poss_order):
@@ -649,7 +670,7 @@ class VotingSystem(ABC):
             two_c = two.condorcet_points
 
             # increasing this would increase percentages of violations caught at the cost of speed
-            for j in range(0,1000):
+            for j in range(0,300):
 
                 new_pref = self.generate_pref_srr_v2(one, two, one_c, two_c)  # get a new pref with same relative ranks
                 new_map = self.create_societal_rank(new_pref, self.cand_objects, self.possible_orders)
@@ -816,8 +837,12 @@ class VotingSystem(ABC):
             vios = False
             if self.type() == "Pairwise Majority":
                 vios = self.pairwise_majority_violates_transitivity(pref_schedule) # this is for pairwise majority
+                violin = self.pairwise_majority_violates_transitivity_strict(pref_schedule)
+                if((violin == True) and (vios == False)):
+                    print(pref_schedule)
             else:
                 vios = self.violates_transitivity_real(pref_schedule)
+
             if(vios):
                 #print(pref_schedule)
                 self.transitivity_vio += 1
@@ -838,6 +863,13 @@ class VotingSystem(ABC):
 
     # pairwise majority satisfies all the other criterion, this is the only one we need to check
     def pairwise_majority_violates_transitivity(self, pref_schedule):
+
+        if (self.find_Condorcet_candidate(pref_schedule) is not None): # the find condorcet candidates function actually appends condorcet count
+
+            #need documentation
+
+            summer = 1
+            #self.condorcet_count += 1
         # checks to find a condorcet cycle in each three element subset
         for comp in self.three_element_comps:
             # get the three candidates for comparison
@@ -850,6 +882,26 @@ class VotingSystem(ABC):
                 if (two.condorcet_points >= three.condorcet_points):
                     self.compare([comp[0], comp[2]], pref_schedule, self.possible_orders)
                     if ((one.condorcet_points >= three.condorcet_points) == False):
+                        return True
+        return False
+
+
+    def pairwise_majority_violates_transitivity_strict(self, pref_schedule):
+
+        #if (self.find_Condorcet_candidate(pref_schedule) is not None):
+        #    return False
+        # checks to find a condorcet cycle in each three element subset
+        for comp in self.three_element_comps:
+            # get the three candidates for comparison
+            one = self.find_which_candidate_w_name(comp[0])
+            two = self.find_which_candidate_w_name(comp[1])
+            three = self.find_which_candidate_w_name(comp[2])
+            self.compare([comp[0], comp[1]], pref_schedule, self.possible_orders)
+            if (one.condorcet_points >= two.condorcet_points):  # I defined the relational operator in the class
+                self.compare([comp[1], comp[2]], pref_schedule, self.possible_orders)
+                if (two.condorcet_points > three.condorcet_points):
+                    self.compare([comp[0], comp[2]], pref_schedule, self.possible_orders)
+                    if ((one.condorcet_points > three.condorcet_points) == False):
                         return True
         return False
 
@@ -1122,6 +1174,7 @@ class InstantRunoff(VotingSystem):
 
     def create_societal_rank(self, pref_schedule, cand_obj, poss_order):
         cand_process = cand_obj[:]
+        self.elec_round = 1 #adding this so it does not add up to 20000 rounds
         self.run_election(pref_schedule, cand_process, poss_order)
         sorted_list = sorted(cand_obj, key=lambda v: v.round_elim, reverse=True)
         map_of_cands = {}
@@ -1270,6 +1323,7 @@ class Coombs(VotingSystem):
 
     def create_societal_rank(self, pref_schedule, cand_obj, poss_order):
         cand_process = cand_obj[:]
+        self.elec_round = 1
         self.run_election(pref_schedule, cand_process, poss_order)
         sorted_list = sorted(cand_obj, key=lambda v: v.round_elim, reverse=True)
         map_of_cands = {}
@@ -1397,6 +1451,7 @@ class Baldwin(VotingSystem):
 
     def create_societal_rank(self, pref_schedule, cand_obj, poss_order):
         cand_process = cand_obj[:]
+        self.elec_round = 1
         self.run_election(pref_schedule, cand_process, poss_order)
         sorted_list = sorted(cand_obj, key=lambda v: v.round_elim, reverse=True)
         map_of_cands = {}
@@ -2063,13 +2118,27 @@ def main():
     list_of_cand_objects.append(c1)
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
+
+
+
+    c = PairwiseComparison(4,3,list_of_cand_objects)
+    #print(c.violates_IIA([1,1,1,1,1,5])
+    c.find_IIA_violations(100,"IC")
+    print(c.IIAv)
+
     #list_of_cand_objects.append(c4)
+    """
+    p = PairwiseMajority(4,3,list_of_cand_objects)
+    p.find_transitivity_vios(10000,"IC")
+    print(p.condorcet_count)
+    print(p.transitivity_vio)
 
-
-    c = BordaCount(3,3,list_of_cand_objects)
-    #print(c.violates_IIA([1,1,1,1,1,5]))
-    c.find_joint_violations(10000,"IC")
-    print(c.joint)
+    val = p.pairwise_majority_violates_transitivity_strict([3,1,2,2,2,2])
+    val2 =  p.pairwise_majority_violates_transitivity([3,1,2,2,2,2])
+    print(val,val2)
+    """
+    #print(c.cwc_vio)
+    #print(1-c.cwc_vio/c.condorcet_count)
 
 
     #need to reset election round for RCV/Coombs/Baldwin
