@@ -328,6 +328,7 @@ class VotingSystem(ABC):
 
     # similar to condorcet function, but this time finds IIA violations for certain range of num_trials
     def find_IIA_violations(self, num_trials, distribution, weights = None):
+        self.IIAv = 0
         for i in range(0, num_trials):
             pref_schedule = []
             if distribution == "IC":
@@ -340,6 +341,7 @@ class VotingSystem(ABC):
             ivio = self.violates_IIA_paper(pref_schedule)
             if(ivio):
                 self.IIAv += 1
+                print(pref_schedule)
             #else:
                 #if 2 not in pref_schedule:
                  #   print(pref_schedule)
@@ -2076,9 +2078,11 @@ def custom_distribution(num_voters, num_cands, weights):
 
 
 # few functions included for testing
+
+#k is number of candidates factorial
 def generate_unique_permutation(n,k):
     voters = np.zeros(n)
-    candidates = np.ones(k-1)
+    candidates = np.ones(k-1) #not a good variable name, this is actually number of bars (one less than possible pref orders)
     combined_arr = np.concatenate((voters,candidates))
     unique_perms = list(multiset_permutations(combined_arr))
     return unique_perms
@@ -2119,12 +2123,42 @@ def main():
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
 
+    #list_of_cand_objects.append(c4)
 
-
-    c = PairwiseComparison(4,3,list_of_cand_objects)
-    #print(c.violates_IIA([1,1,1,1,1,5])
+    c = PairwiseComparison(4, 3, list_of_cand_objects)
     c.find_IIA_violations(100,"IC")
-    print(c.IIAv)
+    print(c.IIAv/100)
+    """
+    total = 0
+    
+    for i in range(0,1):
+        c.find_IIA_violations(10000,"IC")
+        print("Done trial " + str(i))
+        total += c.IIAv
+
+    print(total/8)
+    """
+
+
+    #something = 0
+    #wow = generate_unique_permutation(30, 6)
+    #even_more_wow = obtain_combos(wow)
+    #print(len(even_more_wow))
+    #for pref in even_more_wow:
+    #    boole = c.violates_IIA_paper(pref)
+    #    if boole:
+    #        something += 1
+
+    #print(something/len(even_more_wow))
+
+
+    #print(c.violates_IIA([1,1,1,1,1,5])
+    #c.find_condorcet_vios(1000,"IC")
+    #print(c.condorcet_count)
+    #print(c.cwc_vio)
+    #print((c.condorcet_count-c.cwc_vio)/c.condorcet_count)
+    #print(1-c.cwc_vio/c.condorcet_count)
+    #print(c.IIAv)
 
     #list_of_cand_objects.append(c4)
     """
