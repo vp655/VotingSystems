@@ -14,7 +14,8 @@ import math
 import time
 from sympy.utilities.iterables import multiset_permutations
 
-
+# the candidate class is used to store the properties of candidates in the election
+# they have various parameters such as name, num_votes, points (for Borda Count), etc.
 class Candidate:
     # constructor for the candidate class
     def __init__(self, name, num_votes=0):
@@ -25,17 +26,15 @@ class Candidate:
         self.condorcet_wins = 0
         self.points = 0
         self.rank = 0
-        # for instant runoff
-        self.round_elim = 0
-
-        # for Coombs
-        self.round_win = 0
+        self.round_elim = 0  # for instant runoff
+        self.round_win = 0  # for Coombs
 
         self.condorcet_losses = 0
         self.last_place_votes = 0
 
-        self.greatest_pairwise_defeat = 0
+        self.greatest_pairwise_defeat = 0  # for minimax
 
+    #overloading operators to compare candidates
     def __eq__(self,other):
         return self.name == other.name
 
@@ -44,6 +43,7 @@ class Candidate:
 
 
 # abstract base class of the voting systems
+# it has functions such as find condorcet winner, determine frequency of condorcet violations, etc.
 class VotingSystem(ABC):
     def __init__(self, num_voters, num_cands, cand_objects):
         self.num_voters = num_voters
