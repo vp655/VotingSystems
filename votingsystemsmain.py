@@ -2125,94 +2125,9 @@ def main():
 
     #list_of_cand_objects.append(c4)
 
-    c = PairwiseComparison(4, 3, list_of_cand_objects)
-    c.find_IIA_violations(100,"IC")
-    print(c.IIAv/100)
-    """
-    total = 0
-    
-    for i in range(0,1):
-        c.find_IIA_violations(10000,"IC")
-        print("Done trial " + str(i))
-        total += c.IIAv
-
-    print(total/8)
-    """
-
-
-    #something = 0
-    #wow = generate_unique_permutation(30, 6)
-    #even_more_wow = obtain_combos(wow)
-    #print(len(even_more_wow))
-    #for pref in even_more_wow:
-    #    boole = c.violates_IIA_paper(pref)
-    #    if boole:
-    #        something += 1
-
-    #print(something/len(even_more_wow))
-
-
-    #print(c.violates_IIA([1,1,1,1,1,5])
-    #c.find_condorcet_vios(1000,"IC")
-    #print(c.condorcet_count)
-    #print(c.cwc_vio)
-    #print((c.condorcet_count-c.cwc_vio)/c.condorcet_count)
-    #print(1-c.cwc_vio/c.condorcet_count)
-    #print(c.IIAv)
-
-    #list_of_cand_objects.append(c4)
-    """
-    p = PairwiseMajority(4,3,list_of_cand_objects)
-    p.find_transitivity_vios(10000,"IC")
-    print(p.condorcet_count)
-    print(p.transitivity_vio)
-
-    val = p.pairwise_majority_violates_transitivity_strict([3,1,2,2,2,2])
-    val2 =  p.pairwise_majority_violates_transitivity([3,1,2,2,2,2])
-    print(val,val2)
-    """
-    #print(c.cwc_vio)
-    #print(1-c.cwc_vio/c.condorcet_count)
-
-
-    #need to reset election round for RCV/Coombs/Baldwin
-    #joint one
-
-
-
-
-    #c.find_condorcet_vios(10000,"IC")
-    #print(c.condorcet_count)
-    #print(c.cwc_vio)
-
-    #a = c.determine_winner([0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,2 ,2 ,1 ,0, 0, 1 ,0 ,1 ,1 ,1 ,1 ,0 ,0 ,0], c.cand_objects, c.possible_orders)
-    #print(a.name)
-
-
-
-
-    """
-    p = Plurality(3, 3, list_of_cand_objects)
-    p.find_unanimity_vios(10000, "IAC")
-    print(p.unam_vios / 100)
-
-    r = ImposedRule(10, 3, list_of_cand_objects)
-    r.find_condorcet_vios(10000, "IC")
-    print(r.cwc_vio)
-
-    print("Yep")
-    d = Dowdall(3, 3, list_of_cand_objects)
-    d.find_IIA_violations(10000, "IAC")
-    print(d.IIAv)
-
-    list_of_cand_objects.append(c4)
-
-    b = BordaCount(3, 4, list_of_cand_objects)
-    b.find_majority_violations(10000, "IC")
-    print(b.majority_vio)
-    """
-
-    print("Hello there")
+    c = Plurality(1000, 3, list_of_cand_objects)
+    c.find_condorcet_vios(10000,"IC")
+    print(c.cwc_vio/100)
 
 
 
