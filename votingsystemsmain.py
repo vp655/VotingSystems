@@ -2127,7 +2127,7 @@ def main():
 
     #configured git!
 
-    c = Coombs(1000, 3, list_of_cand_objects)
+    c = Plurality(1000, 3, list_of_cand_objects)
     c.find_condorcet_vios(10000,"IC")
     print(c.cwc_vio/100)
 
