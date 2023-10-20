@@ -229,7 +229,7 @@ class VotingSystem(ABC):
 
             vio_cond = self.violates_condorcet(pref_schedule)
             if(vio_cond):
-                #print(pref_schedule)
+                print(pref_schedule)
                 self.cwc_vio += 1
 
 
@@ -341,7 +341,7 @@ class VotingSystem(ABC):
             ivio = self.violates_IIA_paper(pref_schedule)
             if(ivio):
                 self.IIAv += 1
-                print(pref_schedule)
+                #print(pref_schedule)
             #else:
                 #if 2 not in pref_schedule:
                  #   print(pref_schedule)
@@ -593,7 +593,7 @@ class VotingSystem(ABC):
         elif winner == 2 and (one.rank <= two.rank):
             return True
         elif winner == 0 and (one.rank != two.rank):
-            return True
+            return True #this is definitely correct (Coombs 30 voters case)
         return False
 
 
@@ -2123,15 +2123,12 @@ def main():
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
 
-    #list_of_cand_objects.append(c4)
 
-    #configured git!
+    c = InstantRunoff(10,3,list_of_cand_objects)
+    c.find_condorcet_vios(100, "IC")
+    print(c.violates_condorcet([1,3,3,1,2,0]))
 
-    c = Plurality(1000, 3, list_of_cand_objects)
-    c.find_condorcet_vios(10000,"IC")
-    print(c.cwc_vio/100)
-
-    #added comment
+    print(c.cwc_vio)
 
 
 
