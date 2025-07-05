@@ -59,6 +59,59 @@ class Plurality(VotingSystem):
         return "Plurality"
 
 
+
+class AntiPlurality(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+
+    def set_votes(self, pref_schedule, poss_order):
+        for cand in self.cand_objects:
+            cand.points = 0
+
+        for i in range(len(pref_schedule)):
+            ordering = poss_order[i]
+            for j in range(0, self.num_cands):
+                if j < self.num_cands - 1:
+                    cand = self.find_which_candidate_w_name(ordering[j])
+                    cand.points += pref_schedule[i]
+
+    def determine_winner(self, pref_schedule, cand_obj, poss_order):
+        societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if num_top == 1:
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
+
+    def create_societal_rank(self, pref_schedule, cand_obj, poss_order):
+        self.set_votes(pref_schedule, poss_order)
+        sorted_list = sorted(cand_obj, key=lambda v: v.points, reverse=True)
+        map_of_cands = {}
+        count = 0
+        previous = sorted_list[0].points
+        map_of_cands[count] = []
+        for cand in sorted_list:
+            if cand.points == previous:
+                map_of_cands[count].append(cand)
+            else:
+                count += 1
+                map_of_cands[count] = []
+                map_of_cands[count].append(cand)
+            previous = cand.points
+            cand.rank = count
+
+        return map_of_cands
+
+    def type(self):
+        return "Anti-Plurality"
+
+
+
+
 class BordaCount(VotingSystem):
 
     def __init__(self, num_voters, num_cands, cand_objects):

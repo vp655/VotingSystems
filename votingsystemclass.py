@@ -306,7 +306,7 @@ class VotingSystem(ABC):
                 #print(pref_schedule)
             #else:
                 #if 2 not in pref_schedule:
-                 #   print(pref_schedule)
+             #       print(pref_schedule)
 
     # exact same as in plurality
     def simple_set(self,pref_schedule, poss_order):
