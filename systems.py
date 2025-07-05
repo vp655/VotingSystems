@@ -564,6 +564,97 @@ class Baldwin(VotingSystem):
         return "Baldwin"
 
 
+class Nanson(VotingSystem):
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+        self.candidates_remaining = self.cand_objects[:]
+        self.current_pref_table = self.possible_orders[:]
+        self.elec_round = 1
+
+    # still borda points
+    def set_votes(self, pref_schedule, poss_order):
+        for cand in self.cand_objects:
+            cand.points = 0
+
+        count = 0
+        for val in pref_schedule:
+            ordering = poss_order[count]
+            for i in range(0, len(poss_order[0])):
+                cand = self.find_which_candidate_w_name(ordering[i])
+                cand.points += val * (len(poss_order[0]) - i)
+            count += 1
+
+    def run_election(self, pref_schedule, cand_obj, poss_order):
+
+        if len(cand_obj) == 0:
+            return
+        else:
+            self.set_votes(pref_schedule, poss_order)
+            cands_to_elim = self.find_candidates_below_mean(cand_obj)
+            for cand in cands_to_elim:
+                cand.round_elim = self.elec_round
+                poss_order = self.eliminate_cands(poss_order, cand.name)
+                cand_obj.remove(cand)
+            self.elec_round += 1
+            self.run_election(pref_schedule, cand_obj, poss_order)
+
+    def find_candidates_below_mean(self, cand_obj): # run of simulation currently
+        total_pts = 0
+        for cand in cand_obj:
+            total_pts += cand.points
+
+        mean_pts = total_pts / len(cand_obj)
+        cands_to_eliminate = []
+        for cand in cand_obj:
+            if cand.points <= mean_pts:
+                cands_to_eliminate.append(cand)
+        return cands_to_eliminate
+
+    def create_societal_rank(self, pref_schedule, cand_obj, poss_order):
+        cand_process = cand_obj[:]
+        self.elec_round = 1
+        self.run_election(pref_schedule, cand_process, poss_order)
+        sorted_list = sorted(cand_obj, key=lambda v: v.round_elim, reverse=True)
+        map_of_cands = {}
+        # emulates do while
+        count = 0
+        previous = sorted_list[0].round_elim
+        map_of_cands[count] = []
+        # end of first iteration
+        for cand in sorted_list:
+            if (cand.round_elim == previous):
+                map_of_cands[count].append(cand)
+            else:
+                count += 1
+                map_of_cands[count] = []
+                map_of_cands[count].append(cand)
+            previous = cand.round_elim
+            cand.rank = count
+
+        return map_of_cands
+
+    def determine_winner(self, pref_schedule, cand_obj, poss_order):
+        cand_obj = cand_obj[:]  # I do not want to modify the actual self.cand_objects
+
+        # I think that doesnt work --> its still a shallow copy
+        # but I can modify the list correctly
+        # but still pointers to same place
+
+        societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if (num_top == 1):
+            return societal_order[0][0]
+        elif num_top > 1:
+            cand_win = rand.choice(societal_order[0])
+            return cand_win
+        else:
+            return None
+
+    def type(self):
+        return "Nanson"
+
+
+
 # this is also called Copeland
 
 class PairwiseComparison(VotingSystem):
