@@ -8,7 +8,8 @@ create a societal preference order. The simulations are run in the main function
 
 import time
 from candidate import Candidate
-from systems import Plurality, AntiPlurality
+from systems import Nanson
+from itertools import *
 
 
 def main():
@@ -24,9 +25,10 @@ def main():
     list_of_cand_objects.append(c3)
 
 
-    c = AntiPlurality(3,3,list_of_cand_objects)
+    c = Nanson(3,3,list_of_cand_objects)
+    c.determine_winner([3,2,1,0,0,0],list_of_cand_objects,list(permutations(['A','B','C'])))
     c.find_IIA_violations(1000,"IC")
-    c.find_unanimity_vios(10000, "IAC")
+    c.find_unanimity_vios(10000, "IC")
 
     print(c.IIAv)
     print(c.unam_vios)
