@@ -1,5 +1,7 @@
 from votingsystemclass import VotingSystem
 import random as rand
+from collections import deque
+from itertools import combinations
 
 class Plurality(VotingSystem):
 
@@ -711,6 +713,8 @@ class PairwiseComparison(VotingSystem):
         return "Pairwise Comparison"
 
 
+
+
 # really need to see whether this is the right implementation
 # the transitivity function is good though - this is the only system that violates transitivity
 class PairwiseMajority(VotingSystem):
@@ -737,6 +741,103 @@ class PairwiseMajority(VotingSystem):
 
     def type(self):
         return "Pairwise Majority"
+
+
+
+
+class RankedPairs(VotingSystem):
+
+    def __init__(self, num_voters, num_cands, cand_objects):
+        super().__init__(num_voters, num_cands, cand_objects)
+        self.pairwise_matrix = []
+        self.name_to_index = {}
+        self.index_to_cand = {}
+
+    def set_votes(self, pref_schedule, poss_order):
+        self.pairwise_matrix = [[0] * self.num_cands for _ in range(self.num_cands)]
+        self.name_to_index = {cand.name: i for i, cand in enumerate(self.cand_objects)}
+        self.index_to_cand = {i: cand for i, cand in enumerate(self.cand_objects)}
+
+        for i in range(len(pref_schedule)):
+            order = poss_order[i]
+            for j in range(len(order)):
+                for k in range(j + 1, len(order)):
+                    winner = self.name_to_index[order[j]]
+                    loser = self.name_to_index[order[k]]
+                    self.pairwise_matrix[winner][loser] += pref_schedule[i]
+
+    def determine_winner(self, pref_schedule, cand_obj, poss_order):
+        societal_order = self.create_societal_rank(pref_schedule, cand_obj, poss_order)
+        num_top = len(societal_order[0])
+        if num_top == 1:
+            return societal_order[0][0]
+        elif num_top > 1:
+            return rand.choice(societal_order[0])
+        else:
+            return None
+
+    def create_societal_rank(self, pref_schedule, cand_obj, poss_order):
+        self.set_votes(pref_schedule, poss_order)
+
+        pairs = []
+        for i, j in combinations(range(self.num_cands), 2):
+            if self.pairwise_matrix[i][j] > self.pairwise_matrix[j][i]:
+                margin = self.pairwise_matrix[i][j] - self.pairwise_matrix[j][i]
+                pairs.append((i, j, margin))
+            elif self.pairwise_matrix[j][i] > self.pairwise_matrix[i][j]:
+                margin = self.pairwise_matrix[j][i] - self.pairwise_matrix[i][j]
+                pairs.append((j, i, margin))
+
+        pairs.sort(key=lambda x: x[2], reverse=True)
+
+        locked = [[False] * self.num_cands for _ in range(self.num_cands)]
+
+        def creates_cycle(start, end):
+            visited = set()
+            stack = [end]
+            while stack:
+                node = stack.pop()
+                if node == start:
+                    return True
+                for nxt in range(self.num_cands):
+                    if locked[node][nxt] and nxt not in visited:
+                        visited.add(nxt)
+                        stack.append(nxt)
+            return False
+
+        for winner, loser, _ in pairs:
+            if not creates_cycle(winner, loser):
+                locked[winner][loser] = True
+
+        in_degree = [0] * self.num_cands
+        for i in range(self.num_cands):
+            for j in range(self.num_cands):
+                if locked[i][j]:
+                    in_degree[j] += 1
+
+        queue = deque([i for i in range(self.num_cands) if in_degree[i] == 0])
+        rank_list = []
+        while queue:
+            u = queue.popleft()
+            rank_list.append(self.index_to_cand[u])
+            for v in range(self.num_cands):
+                if locked[u][v]:
+                    in_degree[v] -= 1
+                    if in_degree[v] == 0:
+                        queue.append(v)
+
+        for i, cand in enumerate(rank_list):
+            cand.rank = i
+        grouped = {}
+        for cand in rank_list:
+            r = cand.rank
+            if r not in grouped:
+                grouped[r] = []
+            grouped[r].append(cand)
+        return grouped
+
+    def type(self):
+        return "Ranked Pairs"
 
 
 class Dowdall(VotingSystem):

@@ -300,7 +300,7 @@ class VotingSystem(ABC):
             elif distribution == "Custom":
                 pref_schedule = custom_distribution(self.num_voters, self.num_cands, weights)
 
-            ivio = self.violates_IIA_paper(pref_schedule)
+            ivio = self.violates_IIA(pref_schedule)
             if(ivio):
                 self.IIAv += 1
                 #print(pref_schedule)

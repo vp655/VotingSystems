@@ -8,7 +8,7 @@ create a societal preference order. The simulations are run in the main function
 
 import time
 from candidate import Candidate
-from systems import Nanson
+from systems import Nanson, RankedPairs
 from itertools import *
 
 
@@ -18,20 +18,23 @@ def main():
     c1 = Candidate('A')
     c2 = Candidate('B')
     c3 = Candidate('C')
-    # c4 = Candidate('D')
+    c4 = Candidate('D')
 
     list_of_cand_objects.append(c1)
     list_of_cand_objects.append(c2)
     list_of_cand_objects.append(c3)
+    list_of_cand_objects.append(c4)
 
 
-    c = Nanson(3,3,list_of_cand_objects)
-    c.determine_winner([3,2,1,0,0,0],list_of_cand_objects,list(permutations(['A','B','C'])))
-    c.find_IIA_violations(1000,"IC")
-    c.find_unanimity_vios(10000, "IC")
+    c = RankedPairs(10,4,list_of_cand_objects)
+    #c.violates_unanimity([3,0,0,0,0,0])
+    #a = c.determine_winner([1,0,0,1,1,0],list_of_cand_objects,list(permutations(['A','B','C'])))
+    #print(a.name)
+    c.find_IIA_violations(100,"IC")
+    # c.find_unanimity_vios(1000, "IC")
 
     print(c.IIAv)
-    print(c.unam_vios)
+    #print(c.unam_vios)
 
 
 
