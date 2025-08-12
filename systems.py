@@ -746,13 +746,11 @@ class PairwiseMajority(VotingSystem):
 
 
 class RankedPairs(VotingSystem):
-
     def __init__(self, num_voters, num_cands, cand_objects):
         super().__init__(num_voters, num_cands, cand_objects)
         self.pairwise_matrix = []
         self.name_to_index = {}
         self.index_to_cand = {}
-
     def set_votes(self, pref_schedule, poss_order):
         self.pairwise_matrix = [[0] * self.num_cands for _ in range(self.num_cands)]
         self.name_to_index = {cand.name: i for i, cand in enumerate(self.cand_objects)}
@@ -789,7 +787,6 @@ class RankedPairs(VotingSystem):
                 pairs.append((j, i, margin))
 
         pairs.sort(key=lambda x: x[2], reverse=True)
-
         locked = [[False] * self.num_cands for _ in range(self.num_cands)]
 
         def creates_cycle(start, end):
