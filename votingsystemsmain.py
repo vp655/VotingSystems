@@ -17,10 +17,16 @@ def main():
     c2 = Candidate('B')
     c3 = Candidate('C')
 
+    # create a list of candidates
     list_of_cand_objects = [c1, c2, c3]
 
+    # select the voting system and the parameters
     c = Plurality(3, 3, list_of_cand_objects)
+
+    # run the desired method (here we are finding IIA violations for Plurality)
     c.find_IIA_violations(100, "IC")
+
+    # output the results
     print(f"IIA violations: {c.IIAv}")
 
 
